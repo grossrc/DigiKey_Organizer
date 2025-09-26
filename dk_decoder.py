@@ -94,14 +94,24 @@ def parse_number_with_prefix(s: str) -> Optional[float]:
     n = _num(val)
     return None if n is None else n * base
 
-def parse_range(s: str, inner_parser) -> Tuple[Optional[float], Optional[float]]:
+def parse_range(s: str, inner_parser):
     """
-    Splits ranges like "-55°C ~ 125°C", "2.7V to 5.5V", "1–10" and applies inner_parser.
+    Splits ranges like "-55°C ~ 125°C", "2.7V to 5.5V", "1–10".
+    Avoid splitting on leading negatives by using a numeric-boundary hyphen.
     """
-    parts = re.split(r'\s*(?:~|to|–|-)\s*', s)
-    if len(parts) != 2:
-        return (None, None)
-    return inner_parser(parts[0]), inner_parser(parts[1])
+    # First try explicit words/symbols that aren't ambiguous
+    for sep in [r'~', r'\bto\b', r'–', r'—']:
+        parts = re.split(rf'\s*{sep}\s*', s)
+        if len(parts) == 2:
+            return inner_parser(parts[0]), inner_parser(parts[1])
+
+    # Fallback: hyphen only when it's between numbers
+    parts = re.split(r'(?<=\d)\s*-\s*(?=\d)', s)
+    if len(parts) == 2:
+        return inner_parser(parts[0]), inner_parser(parts[1])
+
+    return (None, None)
+
 
 def parse_temp_c(s: str) -> Optional[float]:
     m = re.search(r'([+-]?\d+(?:\.\d+)?)', s)
@@ -354,14 +364,17 @@ def decode_product(raw_json: Dict[str, Any], registry: Dict[str, dict]) -> Dict[
         for canon_key, source_keys in attr_map.items():
             # Find the first present source key in the vendor params
             val_text = next((params.get(k) for k in source_keys if k in params), None)
-            if val_text is None:
+            # skip placeholder values like "-" so they don't pollute attributes
+            if val_text is None or str(val_text).strip() == "-":
                 continue
+
             norm = normalize_value(canon_key, val_text)
             if isinstance(norm, dict):
                 # e.g., operating_temp_range -> split min/max dict
                 attrs.update(norm)
             elif norm is not None:
                 attrs[canon_key] = norm
+
 
         # Traits may derive more canonical fields
         attrs.update(apply_traits(profile, params))
