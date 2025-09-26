@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>{{ title or "Catalog" }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='catalog/catalog.css') }}">
+</head>
+<body class="cat-body">
+  <!-- No global header (per your request) -->
+
+  <main class="cat-main">
+    <div class="cat-wrap">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <footer class="cat-footer">
+    <div class="cat-wrap">Served by Raspberry Pi • Inventory is live</div>
+  </footer>
+
+  <!-- Add a visible console marker so we know this template loaded -->
+  <script>console.log('[catalog_base] before QR include');</script>
+
+  <!-- LOCAL QR LIB -->
+  <script src="{{ url_for('static', filename='catalog/qrcode.min.js', v=1) }}"></script>
+
+  <script>console.log('[catalog_base] after QR include. window.QRCode =', window.QRCode);</script>
+
+  <!-- Your app JS -->
+  <script src="{{ url_for('static', filename='catalog/catalog.js', v=1) }}"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+id: capacitor_ceramic
+version: 1.0.1
+source_categories:
+- Ceramic Capacitors
+- Fixed Capacitors - Ceramic
+traits:
+- has_package_code
+- has_mounting_type
+- has_operating_temp
+- has_dimensions
+attributes:
+  map:
+    capacitance_f:
+    - Capacitance
+    tolerance_pct:
+    - Tolerance
+    voltage_rating_v:
+    - Voltage - Rated
+    dielectric:
+    - Temperature Coefficient
+    - Dielectric
+    applications:
+    - Applications
+  validators:
+    capacitance_f:
+      gt: 0
+    voltage_rating_v:
+      gt: 0
+    dielectric:
+      enum:
+      - C0G
+      - NP0
+      - X7R
+      - X5R
+      - Y5V
+      - X6S
+      - X7S
+      - X7T
+      - X8R
+display_order:
+- capacitance_f
+- tolerance_pct
+- voltage_rating_v
+- dielectric
+- package_code
+- mounting_type
+source_category_patterns:
+- (?i)Capacitors?.*Ceramic

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Database Maintenance</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    .section { border: 1px solid #1f2937; border-radius: 16px; padding: 1rem; background: rgba(11,18,32,.7); }
+    .section h2 { margin: 0 0 .5rem 0; font-size: 1.25rem; }
+    .muted { color: var(--muted); }
+    .danger { border-left: 4px solid #ef4444; background: rgba(239,68,68,.08); padding: .75rem 1rem; border-radius: 12px; }
+    .grid-2 { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0,1fr)); }
+    pre.sql {
+      margin: .5rem 0 0 0; padding: .75rem; border-radius: 12px;
+      background: #0b1220; border: 1px solid #273548; overflow: auto;
+      white-space: pre; font: 500 .9rem ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .checks { display: grid; gap: .6rem; margin: .5rem 0; }
+    .row { display: flex; align-items: center; gap: .5rem; }
+    .row input[type="checkbox"] { transform: scale(1.2); }
+    .kbd { font: 600 .9rem ui-monospace, SFMono-Regular, Menlo, monospace; background: #0b1220; border: 1px solid #273548; padding: .1rem .35rem; border-radius: 6px; }
+    .danger-btn {
+      border-color: #ef4444 !important;
+      background: #0b1220 !important;
+    }
+    .danger-btn:active { background: #ef4444 !important; color: #06202a !important; border-color: #ef4444 !important; }
+    @media (max-width: 860px) { .grid-2 { grid-template-columns: 1fr; } }
+    .small { font-size: .95rem; }
+
+    /* Make the action buttons side-by-side and not full-width */
+    .actions { display: flex; gap: 0.75rem; }
+    .actions .btn { width: auto; min-width: 12rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <!-- Header -->
+      <div class="header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+        <div class="title-group">
+          <p class="subtitle" style="margin:0;font-size:1.5rem;font-weight:700;letter-spacing:.5px;">
+            Database Maintenance — Full Reset
+          </p>
+        </div>
+        <a class="btn" style="width:auto;min-height:auto;padding:.6rem 1rem;font-size:1rem;" href="{{ url_for('home') }}">← Back</a>
+      </div>
+
+      <div class="section danger" style="margin-bottom:0.5rem;">
+        <strong>Read carefully:</strong> This operation will <em>permanently</em> remove all stocked parts and reset
+        tables, counters, and relationships. You’ll need to physically remove/label parts and <strong>re-scan everything from scratch</strong>.
+      </div>
+
+      <div class="grid-2">
+        <div class="section">
+          <h2>What the reset does</h2>
+          <ul class="muted" style="margin:0;padding-left:1.1rem;">
+            <li>Truncates core tables and <strong>restarts identity sequences</strong>.</li>
+            <li>Removes all stock, movements, intake history, and locations.</li>
+            <li>Clears categories and part entries.</li>
+            <li>Leaves schema in place so you can re-scan and rebuild inventory.</li>
+          </ul>
+          <p class="muted small" style="margin:.75rem 0 0 0;">
+            After reset, the system is blank: you must <strong>Scan-In</strong> each part again with correct bin locations.
+          </p>
+        </div>
+      </div>
+
+      <!-- Keep the form; now it only carries checkboxes. -->
+      <form class="section" method="post" action="{{ url_for('dbreset_confirm') }}" id="resetForm">
+        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+
+        <h2>Confirmations required</h2>
+        <div class="checks">
+          <label class="row"><input type="checkbox" id="chk1" name="chk1"> <span>I understand <strong>ALL stock, parts, locations, movements, and categories</strong> will be permanently removed.</span></label>
+          <label class="row"><input type="checkbox" id="chk2" name="chk2"> <span>I will <strong>rebuild inventory</strong> by re-scanning every part and assigning correct bins.</span></label>
+          <label class="row"><input type="checkbox" id="chk3" name="chk3"> <span>I have gotten permission from an <strong>adult</strong>.</span></label>
+        </div>
+
+        <div class="danger" style="margin-top:1rem;">
+          Safety timer: <strong id="countdown">7</strong> seconds before you can proceed.
+        </div>
+
+        <div class="actions" style="margin-top:1rem;">
+          <button type="submit" class="btn danger-btn" id="finalBtn" disabled>
+            ⚠️ Confirm Reset (Irreversible)
+          </button>
+          <a class="btn" href="{{ url_for('home') }}">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const btn = document.getElementById('finalBtn');
+    const cd  = document.getElementById('countdown');
+    const c1  = document.getElementById('chk1');
+    const c2  = document.getElementById('chk2');
+    const c3  = document.getElementById('chk3');
+
+    function checksPass() {
+      return c1.checked && c2.checked && c3.checked && Number(cd.textContent) === 0;
+    }
+    function update() {
+      btn.disabled = !checksPass();
+    }
+    c1.addEventListener('change', update);
+    c2.addEventListener('change', update);
+    c3.addEventListener('change', update);
+
+    // Safety countdown
+    let t = 7;
+    cd.textContent = t;
+    const it = setInterval(() => {
+      t = Math.max(0, t - 1);
+      cd.textContent = t;
+      update();
+      if (t === 0) clearInterval(it);
+    }, 1000);
+
+    // Submit guard (no final confirm dialog)
+    document.getElementById('resetForm').addEventListener('submit', function(e){
+      if (!checksPass()) e.preventDefault();
+    });
+  })();
+</script>
+
+</body>
+</html>

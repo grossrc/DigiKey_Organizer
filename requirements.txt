@@ -1,0 +1,35 @@
+# Core
+numpy>=1.26
+opencv-python>=4.8
+
+# Preferred barcode backend
+zxing-cpp>=2.2
+
+# Optional fallbacks (install all three so scanning still works if ZXing isn't available)
+pylibdmtx>=0.1.10
+pyzbar>=0.1.9
+pillow>=10.0
+
+# ---- Notes (comments are safe in requirements.txt) ----
+# On Raspberry Pi, make sure your OS is 64-bit if possible.
+# If pyzbar/pylibdmtx complain about missing system libs:
+#   sudo apt-get install libzbar0 libdmtx0a
+# If cv2.imshow fails on Linux, you may need GTK/Qt:
+#   sudo apt-get install libgtk-3-0
+
+#Used for my environment variable used to store my API tokens
+python-dotenv>=1.1.1
+
+#Used for API interaction
+requests>=2.31
+PyYAML>=6.0.1
+
+
+#Tentative Requirements for postgresql interacting with python
+psycopg2-binary>=2.9
+python-dotenv>=1.0
+
+
+#frontend stuff
+Flask>=2.3
+gunicorn

@@ -1,0 +1,24 @@
+id: usb_connector
+version: 1.0.1
+source_categories:
+- USB, DVI, HDMI Connectors
+- USB Connectors
+traits:
+- has_mounting_type
+- has_dimensions
+attributes:
+  map:
+    usb_standard:
+    - Connector Type
+    gender:
+    - Gender
+    positions:
+    - Number of Contacts
+    pitch_mm:
+    - Pitch
+    orientation:
+    - Orientation
+    current_rating_a:
+    - Current Rating (Amps)
+source_category_patterns:
+- (?i)\bUSB\b.*Connectors?

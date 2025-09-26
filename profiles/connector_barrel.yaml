@@ -1,0 +1,25 @@
+id: connector_barrel
+version: 1.0.1
+source_categories:
+- Power Connectors - Barrel Connectors
+traits:
+- has_mounting_type
+- has_dimensions
+attributes:
+  map:
+    inner_d_mm:
+    - Inner Diameter
+    outer_d_mm:
+    - Outer Diameter
+    current_rating_a:
+    - Current Rating
+    voltage_rating_v:
+    - Voltage Rating
+    gender:
+    - Gender
+    orientation:
+    - Orientation
+    mounting_feature:
+    - Mounting Feature
+source_category_patterns:
+- (?i)Barrel.*Connectors?

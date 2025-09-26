@@ -1,0 +1,19 @@
+{% extends "catalog/catalog_base.html" %}
+{% block content %}
+  <h1 class="page-title">Parts Catalog</h1>
+
+  {% if categories|length == 0 %}
+    <div class="empty">No in-stock categories yet.</div>
+  {% else %}
+    <div class="grid-cards">
+      {% for c in categories %}
+        <a class="card" href="{{ url_for('catalog_category', category_id=c.category_id) }}">
+          <div class="card-title">{{ c.source_name }}</div>
+          <div class="card-sub">
+            {{ c.part_count }} part{{ 's' if c.part_count != 1 }} • {{ c.total_qty }} in stock
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

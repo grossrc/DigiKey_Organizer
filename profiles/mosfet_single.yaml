@@ -1,0 +1,25 @@
+id: mosfet_single
+version: 1.0.1
+source_categories:
+- Transistors - FETs, MOSFETs - Single
+traits:
+- has_package_code
+- has_mounting_type
+- has_operating_temp
+- has_dimensions
+attributes:
+  map:
+    fet_type:
+    - FET Type
+    vds_max_v:
+    - Drain to Source Voltage (Vdss)
+    id_cont_a:
+    - Current - Continuous Drain (Id) @ 25°C
+    rds_on_ohm:
+    - Rds On (Max) @ Id, Vgs
+    vgs_th_v:
+    - Vgs(th) (Max) @ Id
+    gate_charge_nc:
+    - Gate Charge (Qg) (Max) @ Vgs
+source_category_patterns:
+- (?i)MOSFETs?.*Single

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Checkout</title>
+  <!-- Reuse the kiosk styling from your homepage -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    .panel { padding: 0.2rem; }
+    .header { margin-bottom: 0.1rem; }
+    .subtitle { margin-top: 0.1rem; }
+    .container { padding: 0.1rem; }
+
+    /* Two big buttons side-by-side by default; stack only on very narrow screens */
+    .panel .grid-3 { grid-template-columns: 1fr 1fr; gap: 2rem; }
+    @media (max-width: 560px) { .panel .grid-3 { grid-template-columns: 1fr; } }
+
+    /* Keep them nice and tall */
+    .btn.xl { --btn-height: 15.25rem; --btn-font-size: 2.85rem; --btn-padding-y: 4.2rem; }
+
+    /* If the Pi sometimes reports portrait, still keep two columns in landscape-sized viewports */
+    @media (orientation: landscape) and (min-width: 600px) {
+        .panel .grid-3 { grid-template-columns: 1fr 1fr; }
+    }
+    </style>
+
+</head>
+<body>
+  <main class="container">
+    <section class="panel" role="dialog" aria-labelledby="title">
+      <div class="header" style="
+        display:flex;
+        flex-direction:column;   /* stack */
+        align-items:center;      /* center horizontally */
+        text-align:center;       /* center text */
+        gap:.4rem;               /* space between lines */
+        margin-bottom:20px;
+      ">
+        <h1 style="margin:0; font-size:2em; font-weight:bold;">Check out parts</h1>
+        <p style="margin:0; font-size:1em; color:#9ca3af;">
+          Use a QR code generated from the Pi Catalog List, or you can checkout parts individually.
+        </p>
+      </div>
+
+
+
+      <!-- Two giant buttons, touch-friendly -->
+      <div class="grid-3">
+        <!-- Manual (TODO) — keep visible, but mark as coming soon -->
+        <a class="btn xl" href="{{ url_for('manual_checkout') }}" role="button">Manual Checkout</a>
+        <!-- QR checkout -->
+        <a class="btn xl" href="{{ url_for('checkout_qr') }}" role="button">Checkout via QR code</a>
+      </div>
+
+      <!-- Single Back to Home action -->
+      <div class="actions">
+        <a class="btn" href="{{ url_for('home') }}">← Back to Home</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

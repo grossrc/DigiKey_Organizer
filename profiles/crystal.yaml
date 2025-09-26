@@ -1,0 +1,22 @@
+id: crystal
+version: 1.0.1
+source_categories:
+- Crystals
+traits:
+- has_package_code
+- has_mounting_type
+- has_dimensions
+attributes:
+  map:
+    frequency_hz:
+    - Frequency
+    load_capacitance_f:
+    - Load Capacitance
+    esr_ohm:
+    - ESR (Equivalent Series Resistance)
+    frequency_tolerance_pct:
+    - Frequency Tolerance
+    frequency_stability_pct:
+    - Frequency Stability
+source_category_patterns:
+- (?i)\bCrystals?\b

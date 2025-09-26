@@ -1,0 +1,25 @@
+id: led_discrete
+version: 1.0.1
+source_categories:
+- LED Indication - Discrete
+traits:
+- has_package_code
+- has_mounting_type
+- has_dimensions
+attributes:
+  map:
+    color:
+    - Color
+    wavelength_nm:
+    - Wavelength - Dominant
+    cct_k:
+    - Color Temperature
+    luminous_intensity_mcd:
+    - Millicandela Rating
+    - Luminous Intensity
+    if_test_a:
+    - Current - Test
+    vf_typ_v:
+    - Voltage - Forward (Vf) (Typ) @ If
+source_category_patterns:
+- (?i)\bLED\b.*(Discrete|Indicator|Indication)

@@ -1,0 +1,72 @@
+id: capacitor_electrolytic_aluminum
+version: 1.0.0
+# Digi-Key category labels
+source_categories:
+  - "Aluminum Electrolytic Capacitors"
+source_category_patterns:
+  - "(?i)Aluminum.*Electrolytic.*Capacitors?"
+
+traits:
+  - has_package_code
+  - has_mounting_type
+  - has_operating_temp
+  - has_dimensions
+
+attributes:
+  map:
+    # Electrical core
+    capacitance_f: ["Capacitance"]
+    tolerance_pct: ["Tolerance"]
+    voltage_rating_v: ["Voltage - Rated","Voltage Rating"]
+    operating_temp_range: ["Operating Temperature"]
+
+    # Electrolytic-specific
+    esr_ohm: ["ESR (Equivalent Series Resistance)"]
+    impedance_ohm: ["Impedance"]
+    ripple_current_highfreq_a: ["Ripple Current @ High Frequency","Ripple Current"]
+    ripple_current_lowfreq_a: ["Ripple Current @ Low Frequency"]
+    lifetime_hours_at_temp: ["Lifetime @ Temp"]            # e.g., "2000 Hrs @ 105°C"
+    leakage_current_a: ["Leakage Current"]
+    dissipation_factor: ["Dissipation Factor (DF), Tan Delta"]
+    polarization: ["Polarization"]                         # "Polar", "Bi-Polar"
+    ratings: ["Ratings"]                                   # e.g., AEC-Q200
+    applications: ["Applications"]
+
+    # Mechanics / mounting
+    mounting_type: ["Mounting Type"]                       # trait also normalizes SMD/TH
+    package_case_text: ["Package / Case"]
+    size_dim_text: ["Size / Dimension"]                    # “Dia x H” or L x W (SMD can)
+    height_text: ["Height - Seated (Max)"]
+    diameter_body_text: ["Diameter"]                       # some vendors list separately
+    lead_spacing_mm: ["Lead Spacing"]
+    termination_style: ["Termination"]                     # Radial, Snap-In, Solder Lug
+    surface_land_size: ["Surface Mount Land Size"]         # SMD cans
+
+  validators:
+    capacitance_f: { gt: 0 }
+    voltage_rating_v: { gt: 0 }
+    ripple_current_highfreq_a: { gt: 0 }
+
+display_order:
+  - capacitance_f
+  - tolerance_pct
+  - voltage_rating_v
+  - operating_temp_range
+  - polarization
+  - esr_ohm
+  - impedance_ohm
+  - ripple_current_highfreq_a
+  - ripple_current_lowfreq_a
+  - leakage_current_a
+  - lifetime_hours_at_temp
+  - dissipation_factor
+  - ratings
+  - applications
+  - mounting_type
+  - package_case_text
+  - size_dim_text
+  - height_text
+  - diameter_body_text
+  - lead_spacing_mm
+  - termination_style
+  - surface_land_size

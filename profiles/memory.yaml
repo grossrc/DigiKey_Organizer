@@ -1,0 +1,28 @@
+id: memory
+version: 1.0.1
+source_categories:
+- Memory
+traits:
+- has_package_code
+- has_mounting_type
+- has_operating_temp
+- has_dimensions
+- has_interface
+attributes:
+  map:
+    memory_type:
+    - Memory Type
+    - Technology
+    memory_size_bits:
+    - Memory Size
+    interface:
+    - Interface
+    supply_min_v:
+    - Voltage - Supply (Min)
+    supply_max_v:
+    - Voltage - Supply (Max)
+    speed_hz:
+    - Clock Frequency
+    - Speed
+source_category_patterns:
+- (?i)\bMemory\b

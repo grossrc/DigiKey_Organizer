@@ -1,0 +1,45 @@
+id: resistor_chip_smd
+version: 1.0.1
+source_categories:
+- Chip Resistor - Surface Mount
+traits:
+- has_package_code
+- has_mounting_type
+- has_operating_temp
+- has_dimensions
+attributes:
+  map:
+    resistance_ohm:
+    - Resistance
+    - Resistance (Ohms)
+    - Resistance Value
+    tolerance_pct:
+    - Tolerance
+    power_rating_w:
+    - Power (Watts)
+    - Power Rating
+    temp_coefficient_ppm:
+    - Temperature Coefficient
+    composition:
+    - Composition
+  validators:
+    resistance_ohm:
+      gt: 0
+    tolerance_pct:
+      in_set:
+      - 0.1
+      - 0.25
+      - 0.5
+      - 1
+      - 2
+      - 5
+      - 10
+      - 20
+display_order:
+- resistance_ohm
+- tolerance_pct
+- power_rating_w
+- temp_coefficient_ppm
+- package_code
+source_category_patterns:
+- (?i)Resistors?.*(Chip|Surface\s*Mount|SMD)

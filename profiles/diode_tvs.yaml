@@ -1,0 +1,22 @@
+id: diode_tvs
+version: 1.0.1
+source_categories:
+- TVS - Diodes
+traits:
+- has_package_code
+- has_mounting_type
+- has_dimensions
+attributes:
+  map:
+    standoff_voltage_v:
+    - Voltage - Reverse Standoff (Typ)
+    breakdown_voltage_v:
+    - Voltage - Breakdown (Min)
+    clamping_voltage_v:
+    - Voltage - Clamping (Max) @ Ipp
+    peak_pulse_current_a:
+    - Current - Peak Pulse (10/1000µs)
+    peak_pulse_power_w:
+    - Power - Peak Pulse (10/1000µs)
+source_category_patterns:
+- (?i)TVS.*Diodes?

@@ -1,0 +1,23 @@
+id: bjt_single
+version: 1.0.1
+source_categories:
+- Transistors - Bipolar (BJT) - Single
+traits:
+- has_package_code
+- has_mounting_type
+- has_operating_temp
+- has_dimensions
+attributes:
+  map:
+    polarity:
+    - Transistor Type
+    vceo_v:
+    - Voltage - Collector Emitter Breakdown (Max)
+    ic_cont_a:
+    - Current - Collector (Ic) (Max)
+    hfe_dc_gain:
+    - DC Current Gain (hFE) (Min) @ Ic, Vce
+    power_max_w:
+    - Power - Max
+source_category_patterns:
+- (?i)Bipolar.*(BJT).*Single

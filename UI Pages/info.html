@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Info & Help</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    /* Page-specific layout helpers (minimal; keeps your core styles) */
+    .content { display: grid; gap: 1rem; }
+    .section { border: 1px solid #1f2937; border-radius: 16px; padding: 1rem; background: rgba(11,18,32,.7); }
+    .section h2 { margin: 0 0 .5rem 0; font-size: 1.25rem; }
+    .muted { color: var(--muted); }
+    .grid-2 { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .steps { counter-reset: step; display: grid; gap: .6rem; }
+    .steps li { list-style: none; padding-left: 2.25rem; position: relative; }
+    .steps li::before {
+      counter-increment: step; content: counter(step);
+      position: absolute; left: 0; top: 0; width: 1.6rem; height: 1.6rem;
+      border: 2px solid var(--btn-border); border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center; font-weight: 800;
+    }
+    .callout { border-left: 4px solid #f59e0b; background: rgba(245,158,11,.08); padding: .75rem 1rem; border-radius: 12px; }
+    .success { border-left-color: #10b981; background: rgba(16,185,129,.08); }
+    .danger { border-left-color: #ef4444; background: rgba(239,68,68,.08); }
+    .kbd { font: 600 .9rem ui-monospace, SFMono-Regular, Menlo, monospace; background: #0b1220; border: 1px solid #273548; padding: .1rem .35rem; border-radius: 6px; }
+    a.inline { color: #67e8f9; text-decoration: none; }
+    a.inline:hover { text-decoration: underline; }
+    @media (max-width: 860px) { .grid-2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <!-- Header -->
+      <div class="header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+        <div class="title-group">
+          <p class="subtitle" style="margin:0;font-size:1.5rem;font-weight:700;letter-spacing:.5px;">
+            DigiKey Electronics Inventory — Info & Help
+          </p>
+          <p class="tagline muted" style="margin:.2rem 0 0 0;">What this is, how it works, and how to use it quickly.</p>
+        </div>
+        <a class="btn" style="width:auto;min-height:auto;padding:.6rem 1rem;font-size:1rem;" href="{{ url_for('home') }}">← Back</a>
+      </div>
+
+      <div class="content">
+        <!-- Links / Repo -->
+        <div class="section">
+          <h2>Project & docs</h2>
+          <ul class="muted" style="margin:0;padding-left:1.1rem;">
+            <li>Developed by <strong>Ryan Gross</strong></li>
+            <li>Code, DB schema, and details: GitHub — <strong>grossrc</strong> / <em>Digikey_Part_Organizer</em>.</li>
+            <li>Local catalog: <a class="inline" target="_blank" rel="noopener">http://lab-parts.local/catalog</a></li>
+          </ul>
+        </div>
+
+        <!-- What this is -->
+        <div class="section">
+          <h2>What is this?</h2>
+          <p class="muted">
+            A locally hosted inventory system for <strong>DigiKey</strong> parts, running on this Raspberry Pi. 
+            It stores item data and stock levels in <strong>PostgreSQL</strong>. The scanner and database
+            are tailored for DigiKey’s <em>Data Matrix</em> labels.
+          </p>
+          <div class="callout success">
+            <strong>Why local?</strong> Fast, private, and always available on your network.
+            Browse the full catalog at <a class="inline" target="_blank" rel="noopener">http://lab-parts.local/catalog</a> (might not work on mobile devices).
+          </div>
+        </div>
+
+        <!-- How it works (high level) -->
+        <div class="section grid-2">
+          <div>
+            <h2>How it works</h2>
+            <ul class="muted" style="margin:0;padding-left:1.1rem;">
+              <li>Scan a DigiKey part (Data Matrix) with <strong>Scan-In</strong>.</li>
+              <li>Confirm or adjust the <strong>quantity</strong> (e.g., if some were used before storing).</li>
+              <li>Assign a <strong>bin/location</strong> (e.g., R3-B12).</li>
+              <li>This stores the part info, attributes, electrical characteristics, categories, and location in the database.</li>
+              <li>Use the <strong>catalog website</strong> to plan projects and avoid double-buying.</li>
+              <li>Checkout those parts when you’re ready.</li>
+            </ul>
+          </div>
+          <div>
+            <h2>What the catalog provides</h2>
+            <ul class="muted" style="margin:0;padding-left:1.1rem;">
+              <li>All the stocked parts that have been logged</li>
+              <li>An "Add to List" feature allowing users to shop around stocked parts</li>
+              <li>CSV download of a desired part list</li>
+              <li>QR code-based automated checkout (recommended)</li>
+              <li>Search by category, attribute, or checkout the product/datasheet links</li>
+              <li>Data stored in PostgreSQL (structure available in repo)</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Quick Start -->
+        <div class="section">
+          <h2>Quick start</h2>
+          <div class="grid-2">
+            <div>
+              <h3 style="margin-top:0;">A) Stock parts (Scan-In)</h3>
+              <ol class="steps">
+                <li>Tap <span class="kbd">Scan-In</span> on the home screen.</li>
+                <li>Scan the DigiKey label (Data Matrix).</li>
+                <li>Set the <strong>quantity</strong> you’re stocking (adjust if some were used).</li>
+                <li>Input the <strong>bin/location</strong> where you’ll physically place it.</li>
+                <li>Save- the part, attributes, and location are automatically stored in the database.</li>
+              </ol>
+              <div class="callout">
+                Be consistent with bin naming (e.g., <em>R3-B12</em>) so search and checkout stay reliable. Improper or careless storage will cause long-term issues.
+              </div>
+            </div>
+            <div>
+              <h3 style="margin-top:0;">B) Plan & choose parts (Catalog)</h3>
+              <ol class="steps">
+                <li>On a computer, open <a class="inline" target="_blank" rel="noopener">http://lab-parts.local/catalog</a>.</li>
+                <li>Browse available stock and <strong>add to your list</strong> as you go.</li>
+                <li>When your list is complete, choose either:
+                <ul style="margin:.6rem 0 .4rem 1.4rem;">
+                    <li style="margin-top:.5rem;"><strong>Generate QR code</strong> for automated checkout, or</li>
+                    <li style="margin-top:.6rem;"><strong>Download CSV</strong> of selected parts.</li>
+                </ul>
+                </li>
+              </ol>
+              <div class="callout success">
+                Recommended: QR checkout reduces errors and keeps the database clean.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Checkout flows -->
+        <div class="section grid-2">
+          <div>
+            <h2>Checkout — QR (recommended)</h2>
+            <ol class="steps">
+              <li>From the catalog, generate your <strong>QR code</strong>.</li>
+              <li>Scan the QR code when prompted.</li>
+              <li>Follow the guided steps; confirm items and then remove the entire package.</li>
+              <li>Done! Items are removed from stock. Use them for your project.</li>
+            </ol>
+          </div>
+          <div>
+            <h2>Checkout — Manual</h2>
+            <ol class="steps">
+              <li>Scroll to find items</li>
+              <li>Confirm location carefully.</li>
+              <li>Checkout and repeat.</li>
+            </ol>
+            <div class="callout danger">
+              Parts are tracked at the <strong>package level</strong>, so the entire package should be checkout out even if you only need a few of the stocked amount. Example: if there are 20 resistors but you only need 5. Checkout all 20, then check back in the 15 remaining.
+            </div>
+          </div>
+        </div>
+
+        <!-- Accuracy & best practices -->
+        <div class="section">
+          <h2>Accuracy matters</h2>
+          <div class="callout danger" style="margin-bottom:.75rem;">
+            This system is the <strong>last line of defense</strong>. Wrong bin, inaccurate quantity, or checking out digitally
+            without physically moving parts (or vice versa) will create significant issues and may require a reset. You can reset the database (i.e. clear stock) from the 'Database' button on the homepage.
+          </div>
+          <ul class="muted" style="margin:0;padding-left:1.1rem;">
+            <li>Always double-check the <strong>bin/location</strong> when scanning in.</li>
+            <li>Keep physical and digital actions in sync.</li>
+            <li>Use the QR flow whenever possible.</li>
+            <li>If you spot a mismatch, fix it immediately (checkout item(s) and re-enter into the system).</li>
+            <li>Most importantly, hAvE fUn!</li>
+          </ul>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions">
+          <a class="btn" href="{{ url_for('home') }}">← Back to Home</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

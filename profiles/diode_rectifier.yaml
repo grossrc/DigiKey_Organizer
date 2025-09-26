@@ -1,0 +1,39 @@
+id: diode_rectifier
+version: 1.0.1
+source_categories:
+- Diodes - Rectifiers - Single
+- Diodes - Rectifiers - Arrays
+- Rectifiers
+traits:
+- has_package_code
+- has_mounting_type
+- has_operating_temp
+- has_dimensions
+attributes:
+  map:
+    diode_type:
+    - Diode Type
+    - Technology
+    current_avg_a:
+    - Current - Average Rectified (Io)
+    - Current - Average Rectified (Io) (per Diode)
+    reverse_voltage_vr_v:
+    - Voltage - DC Reverse (Vr) (Max)
+    - Voltage - Reverse (DC)
+    forward_voltage_vf_v:
+    - Voltage - Forward (Vf) (Max) @ If
+    recovery_time_ns:
+    - Reverse Recovery Time (trr)
+  validators:
+    current_avg_a:
+      gt: 0
+    reverse_voltage_vr_v:
+      gt: 0
+display_order:
+- reverse_voltage_vr_v
+- current_avg_a
+- forward_voltage_vf_v
+- recovery_time_ns
+- package_code
+source_category_patterns:
+- (?i)Diodes?.*Rectifiers?

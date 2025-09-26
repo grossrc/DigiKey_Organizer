@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Manual Checkout</title>
+  <!-- NOTE: we serve static from /UI Pages, so this path is correct -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='checkout/manual/manual.css') }}">
+</head>
+<body>
+  <header class="hdr">
+    <a class="btn" href="{{ url_for('home') }}">← Home</a>
+    <h1>Manual Checkout</h1>
+  </header>
+
+  <main class="wrap">
+    <div class="toolbar">
+      <input id="q" class="input" placeholder="Search MPN or manufacturer…" aria-label="Search"/>
+      <button id="clear" class="btn">Clear</button>
+    </div>
+
+    <div id="list" class="list" role="list"></div>
+    <div id="empty" class="empty" role="status" aria-live="polite" hidden>No parts currently available.</div>
+  </main>
+
+  <!-- Modal -->
+  <div id="modal" class="modal" hidden aria-modal="true" role="dialog" aria-labelledby="mTitle">
+    <div class="card">
+      <h2 id="mTitle" class="card-title">Confirm checkout</h2>
+      <div class="m-body">
+        <div class="m-row"><span class="label">MPN</span><span id="mMPN"></span></div>
+        <div class="m-row"><span class="label">Manufacturer</span><span id="mMfr"></span></div>
+        <div class="m-row"><span class="label">Bin</span><span id="mBin" class="pill pill-blue"></span></div>
+        <div class="m-row"><span class="label">Quantity in bin</span><span id="mQty"></span></div>
+      </div>
+      <div class="actions">
+        <button id="mCancel" class="btn btn-ghost" type="button">Cancel</button>
+        <button id="mConfirm" class="btn btn-primary" type="button">I took this from the shelf</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="{{ url_for('static', filename='checkout/manual/manual.js') }}"></script>
+</body>
+</html>

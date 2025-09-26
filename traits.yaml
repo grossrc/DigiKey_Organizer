@@ -1,0 +1,18 @@
+traits:
+  has_package_code:
+    sources: ["Package / Case"]
+  has_mounting_type:
+    sources: ["Mounting Type"]
+    enum: ["SMD","TH","Panel","Chassis","Wire-to-Board","Board-to-Board"]
+    synonyms:
+      "Surface Mount, MLCC": "SMD"
+      "Surface Mount": "SMD"
+      "Through Hole": "TH"
+  has_operating_temp:
+    sources: ["Operating Temperature"]
+  has_dimensions:
+    sources: ["Size / Dimension","Height - Seated (Max)","Thickness (Max)","Length","Width","Height"]
+  has_voltage_current_basic:
+    sources: ["Voltage - Rated","Voltage - DC","Current","Current - Average Rectified (Io)","Current - Output","Current - Continuous Drain (Id) @ 25°C"]
+  has_interface:
+    sources: ["Interface","Protocol"]

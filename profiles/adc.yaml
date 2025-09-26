@@ -1,0 +1,36 @@
+id: adc
+version: 1.0.1
+source_categories:
+- Data Acquisition - ADCs/DACs - ADCs
+- Analog to Digital Converters (ADC)
+traits:
+- has_package_code
+- has_mounting_type
+- has_operating_temp
+- has_dimensions
+- has_interface
+attributes:
+  map:
+    resolution_bits:
+    - Number of Bits
+    - Resolution (Bits)
+    sps_max:
+    - Sampling Rate (Per Second)
+    - Sample Rate (Per Second)
+    channels:
+    - Number of Inputs
+    - Number of Channels
+    interface:
+    - Interface
+    input_type:
+    - Input Type
+    vref_type:
+    - Reference Type
+    vin_min_v:
+    - Voltage - Input (Min)
+    vin_max_v:
+    - Voltage - Input (Max)
+source_category_patterns:
+- (?i)\bADC(s)?\b
+- (?i)Data Acquisition.*ADC
+- (?i)I2C.*(DAQ|ADC)

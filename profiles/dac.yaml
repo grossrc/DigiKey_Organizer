@@ -1,0 +1,28 @@
+id: dac
+version: 1.0.1
+source_categories:
+- Data Acquisition - ADCs/DACs - DACs
+- Digital to Analog Converters (DAC)
+traits:
+- has_package_code
+- has_mounting_type
+- has_operating_temp
+- has_dimensions
+- has_interface
+attributes:
+  map:
+    resolution_bits:
+    - Number of Bits
+    sps_max:
+    - Data Rate
+    - Update Rate
+    channels:
+    - Number of D/A Converters
+    - Number of Channels
+    interface:
+    - Interface
+    vref_type:
+    - Reference Type
+source_category_patterns:
+- (?i)\bDAC(s)?\b
+- (?i)Data Acquisition.*DAC

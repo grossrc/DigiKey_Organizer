@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Checkout via QR</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+  /* ========= SCAN STEP (full screen camera) ========= */
+  .scan-fullscreen {
+    position: fixed; inset: 0; background:#000; display:grid; place-items:center; z-index: 1;
+  }
+  .scan-fullscreen video { width: 100vw; height: 100vh; object-fit: cover; }
+  .scan-cancel {
+    position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 2; display: grid;
+  }
+  .scan-cancel .btn {
+    background: rgba(11,18,32,.55);
+    border: 2px solid rgba(8,145,178,.8);
+    backdrop-filter: blur(6px);
+  }
+
+  /* ========= COMMON AFTER-SCAN PANELS ========= */
+  .wrap { width: min(1000px, 96vw); margin: 0 auto; }
+  .card { background: rgba(11,18,32,.8); border:1px solid #1f2937; border-radius: 16px; padding: .2rem; }
+  .muted { color: var(--muted); }
+  .progress { color: var(--muted); font-weight:700; white-space: nowrap; }
+
+  /* ========= PREFLIGHT (compact pills, no scroll) ========= */
+  .preflight-row { display:flex; align-items:center; justify-content:space-between; gap:.6rem; margin-bottom:.4rem; }
+  .pill-wrap { display:block; max-height: 28vh; overflow:auto; padding-right: 2px; }
+  .pill {
+    display:inline-block; border: 1px solid #1f2937; border-radius: 999px;
+    padding: .22rem .46rem; margin: .14rem .24rem .14rem 0; background: rgba(11,18,32,.7);
+    font-size: 0.7rem; /* ~70% */
+  }
+  .pill.ok { color: #19c37d; font-weight: 700; }
+  .pill.err { color: #f43f5e; font-weight: 700; }
+
+  /* ========= GUIDED STEP ========= */
+
+  /* Header row: title left, "Item X of Y" right (never wraps) */
+  .guide-header {
+    display:flex; align-items:center; justify-content:space-between; gap:.75rem; margin-bottom:.6rem;
+  }
+
+  /* Two-halves body: left (image + info), right (bin) */
+  .checkout-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;   /* Left | Right */
+    gap: 1rem;
+    margin-bottom: 1rem;
+    align-items: start;
+  }
+
+  /* LEFT HALF: image smaller, text wraps inside left column only */
+  .part-left { min-width: 0; }
+  .part-img {
+    display:block;
+    width: 100%;
+    max-width: 240px;   /* smaller */
+    max-height: 140px;  /* smaller */
+    object-fit: contain;
+    margin: 0 auto .6rem auto; /* center image in left half */
+    background:#0b1220; border:1px solid #1f2937; border-radius:10px;
+  }
+  .part-info h2 { margin:.1rem 0 .2rem; }
+  .part-info .mfr { margin:.05rem 0; }
+  .part-info .desc { margin:.3rem 0 0; }
+
+  /* RIGHT HALF: Bin Location dominates */
+  .part-right { min-width: 0; }
+  .part-right h3 {
+    text-align: center;
+    margin:.1rem 0 .55rem;
+    font-size: 1.6rem;       /* prominent */
+    line-height: 1.15;
+  }
+  .bin-list {
+    display:flex; flex-wrap:wrap; gap:.6rem;
+    align-items:flex-start;
+    justify-content: space-evenly;
+  }
+  .bin-chip {
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:.85rem 1.2rem; border-radius:16px; border:3px solid var(--btn-border);
+    background:#5ec2e0;         /* readable, matches your blue family */
+    color:#06202a;              /* dark text over blue */
+    font-weight:900; font-size:1.35rem;
+    min-width: 6rem;
+    user-select:none; touch-action:manipulation; cursor:pointer;
+  }
+  .bin-chip.active {
+    background: var(--btn-active); color: var(--btn-active-text); border-color: #e3ff04;
+  }
+
+  /* Bottom buttons bar: full width, centered; cancel red (≈25%), pulled fills rest in original blue */
+  .checkout-actions {
+    display:grid;
+    grid-template-columns: 1fr 3fr;  /* 25% | 75% */
+    gap:.7rem;
+    width:100%;
+    align-items:stretch;
+  }
+  .checkout-actions .btn {
+    display:inline-flex; align-items:center; justify-content:center;
+    min-height: 4rem;   /* enforce height */
+    line-height: 1.2; 
+  }
+  .checkout-actions .btn.cancel {
+    background:#b91c1c4e; border-color:#7f1d1d;      /* red cancel */
+    color:#fff; font-weight:900;
+  }
+  .checkout-actions .btn.cancel:active { filter: brightness(1.08); }
+
+  /* Pulled button uses your original blue “primary” */
+  .checkout-actions .btn.pulled {
+    background: #06bcd461;            /* from your theme */
+    color: #ffffff;
+    border-color: var(--btn-active);
+    font-weight:900;
+  }
+
+  /* Small-screen tweaks (Pi 800x480 landscape safe) */
+  @media (max-height: 520px) {
+    .part-img { max-height: 120px; }
+    .part-right h3 { font-size: 1.45rem; }
+    .bin-chip { font-size: 1.25rem; padding:.75rem 1.0rem; }
+  }
+
+  @media (max-width: 720px) {
+    .checkout-body { grid-template-columns: 1fr; } /* stack if very narrow */
+    .checkout-actions { grid-template-columns: 1fr 2fr; }
+    .part-right h3 { margin-top:.2rem; }
+  }
+</style>
+
+</head>
+<body>
+  <!-- STEP 1: FULLSCREEN SCAN (no header/text, just camera + Cancel) -->
+  <section id="scanStep" class="scan-fullscreen" aria-label="Scan QR">
+    <video id="video" playsinline muted></video>
+    <div class="scan-cancel">
+      <a class="btn" href="{{ url_for('home') }}">Cancel</a>
+    </div>
+  </section>
+
+  <!-- STEP 2: Preflight summary (compact, no Rescan) -->
+  <main class="container" style="display:none" id="preflightContainer">
+    <section class="panel wrap" role="dialog" aria-labelledby="title">
+      <div class="header" style="
+        display:flex;
+        flex-direction:column;
+        align-items:flex-start;   /* left-justify content */
+        text-align:left;
+        gap:.1rem;               /* tiny space between lines */
+        margin:0 0 .5rem 0;       /* compact block */
+      ">
+        <h1 style="margin:0; font-weight:800; font-size:1.8rem; line-height:1.1;">
+          Checkout Items
+        </h1>
+        <p style="margin:0.3; font-size:.95rem; line-height:1.2; color:#9ca3af; margin-top: 0.1rem;">
+          You will be guided to checkout parts one at a time.
+        </p>
+      </div>
+
+
+      <div id="preflightStep" class="card">
+        <div class="preflight-row">
+          <div class="progress" id="countSummary">0 parts decoded</div>
+          <a class="btn" id="btnBegin">Begin guided checkout</a>
+        </div>
+
+        <div>
+          <div style="margin:.2rem 0 .25rem; font-weight:800;">In stock</div>
+          <div id="inStockPills" class="pill-wrap"></div>
+          <div style="margin:.55rem 0 .25rem; font-weight:800;">Missing / unavailable</div>
+          <div id="missingPills" class="pill-wrap"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- STEP 3: Guided one-by-one -->
+    <main class="container" style="display:none" id="guideContainer">
+    <section class="panel wrap" role="dialog" aria-labelledby="gTitle">
+        <div class="header guide-header" style="
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:.4rem;            /* tighter than default */
+          margin:0;             /* remove outside spacing */
+          padding:0;            /* keep panel compact */
+        ">
+          <h1 id="gTitle" style="margin:0; font-size:1.8rem; line-height:1.2;">
+            Checkout Part
+          </h1>
+          <div class="progress" id="prog" style="font-size:.9rem; line-height:1.2;"></div>
+        </div>
+
+
+        <div id="guideStep" class="card">
+        <!-- Two halves: left (image + info), right (bin locations) -->
+        <div class="checkout-body">
+            <div class="part-left">
+            <img id="gImg" class="part-img" alt="">
+            <div class="part-info">
+                <h2 id="gMPN"></h2>
+                <div class="muted" id="gMfr"></div>
+                <div class="muted" id="gDesc"></div>
+            </div>
+            </div>
+
+            <div class="part-right">
+              <h3 style="text-align:center; margin:.1rem 0 .55rem;">Bin Location</h3>
+              <div id="gBinList" class="bin-list"></div>
+            </div>
+            </div>
+        </div>
+
+        <div class="checkout-actions">
+            <a class="btn cancel" id="btnCancelMid" href="{{ url_for('checkout') }}">Cancel</a>
+            <a class="btn pulled" id="btnPulled">I pulled this part →</a>
+        </div>
+        </div>
+    </section>
+    </main>
+
+
+
+  <!-- STEP 4: Done -->
+  <main class="container" style="display:none" id="doneContainer">
+    <section class="panel wrap" role="dialog" aria-labelledby="doneTitle">
+      <div class="header">
+        <h1 id="doneTitle" style="margin:0">Checkout complete</h1>
+      </div>
+      <div id="doneStep" class="card">
+        <div id="doneCount" style="font-weight:800; margin:.2rem 0 .6rem"></div>
+        <div id="doneMissingBlock" style="display:none">
+          <div class="muted">The following items were not available. Don’t forget to account for them:</div>
+          <div id="doneMissingPills" class="pill-wrap" style="margin-top:.3rem"></div>
+        </div>
+        <div style="display:flex; gap:.6rem; margin-top:.9rem">
+          <a class="btn" href="{{ url_for('checkout') }}">Back to Checkout</a>
+          <a class="btn" href="{{ url_for('home') }}">Home</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ZXing (browser QR decode) -->
+  <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
+  <script src="{{ url_for('static', filename='checkout/guided/qr.js') }}"></script>
+</body>
+</html>

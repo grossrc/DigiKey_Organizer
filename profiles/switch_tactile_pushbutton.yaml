@@ -1,0 +1,99 @@
+id: switch_tactile_pushbutton
+version: 1.0.0
+
+# Known Digi-Key category labels this profile should match
+source_categories:
+  - "Tactile Switches"
+  - "Pushbutton Switches"
+  - "Switches"
+  - "Switches - Tactile"
+  - "Switches - Tactile Switches"
+  - "Switches - Slide Switches"
+  - "Switches - Pushbutton"
+  - "Switches - Pushbutton Switches"
+  - "Switches - Pushbutton, Tactile"
+  - "Switches - Pushbutton Switches - Momentary"
+  - "Switches - Pushbutton Switches - Latching"
+
+# Fuzzy catch-alls (case-insensitive)
+source_category_patterns:
+  - "(?i)Switches?.*Tactile"
+  - "(?i)Switches?.*Pushbutton"
+
+# Reuse your shared parsing blocks
+traits: [has_mounting_type, has_operating_temp, has_dimensions]
+
+attributes:
+  map:
+    # Core switching parameters
+    circuit: ["Circuit"]                                   # e.g., SPST-NO, DPDT
+    switch_function: ["Switch Function"]                   # e.g., Off-Mom, Off-On, (On)-Off
+    contact_rating_at_voltage: ["Contact Rating @ Voltage"] # free text (e.g., 0.05A @ 12VDC)
+    current_rating_a: ["Current Rating (Amps)", "Current Rating"]
+    voltage_rating_vac: ["Voltage Rating - AC"]
+    voltage_rating_vdc: ["Voltage Rating - DC"]
+
+    # Actuator / mechanical
+    actuator_type: ["Actuator Type"]                       # e.g., Standard, Round Button, Keyswitch
+    actuator_marking: ["Actuator Marking"]                 # e.g., Power Symbol, No Marking
+    actuator_height_mm: ["Actuator Height off PCB, Vertical"]
+    actuator_travel_mm: ["Actuator Travel"]
+    actuator_orientation: ["Actuator Orientation"]         # for right-angle tactiles
+    operating_force_gf: ["Operating Force"]                # tactile force (gf)
+
+    # Illumination / IP
+    illumination: ["Illumination"]                         # Yes/No
+    illumination_type_color: ["Illumination Type, Color"]  # e.g., LED, Green
+    illumination_voltage_v: ["Illumination Voltage (Nominal)"]
+    ingress_protection: ["Ingress Protection"]             # e.g., IP67
+
+    # Mounting / termination / panel
+    mounting_type: ["Mounting Type"]                       # trait also handles normalization
+    termination_style: ["Termination Style"]               # e.g., Gull Wing, J-Bend, PC Pin, Solder Lug
+    panel_cutout: ["Panel Cutout Dimensions"]              # pushbuttons (panel mount)
+    bushing_thread: ["Bushing Thread"]                     # pushbuttons (panel mount)
+
+    # Materials / life
+    contact_material: ["Contact Material"]
+    housing_material: ["Housing Material"]
+    mechanical_life_cycles: ["Mechanical Life"]
+    electrical_life_cycles: ["Electrical Life"]
+
+    # Misc / features
+    features: ["Features"]
+    color: ["Color - Actuator/Cap"]
+
+  validators:
+    current_rating_a: { gt: 0 }
+    # If present and parsed, these are sanity-checked downstream
+    voltage_rating_vdc: { gt: 0 }
+    voltage_rating_vac: { gt: 0 }
+    operating_force_gf: { gt: 0 }
+
+
+# Suggested UI order
+display_order:
+  - switch_function
+  - actuation_type
+  - mounting_type
+  - termination_style
+  - current_rating_a
+  - voltage_rating_dc_v
+  - voltage_rating_ac_v
+  - ingress_protection
+  - operating_force_gf
+  - travel_mm
+  - actuator_shape
+  - actuator_height_mm
+  - actuator_color
+  - illumination
+  - illumination_color
+  - illumination_voltage_v
+  - contact_material
+  - mechanical_life_cycles
+  - electrical_life_cycles
+  - package_code      # from traits if present via "Package / Case" in some datasheets
+  - size_l_mm
+  - size_w_mm
+  - thickness_mm
+  - height_mm

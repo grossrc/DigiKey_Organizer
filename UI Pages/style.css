@@ -1,0 +1,162 @@
+/* UI Pages/style.css — Touch-first, kiosk-friendly */
+
+:root {
+  --bg: #203e85;
+  --panel: #0b1220;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --btn: #0b1220;
+  --btn-border: #0891b2;
+  --btn-active: #06b6d4;
+  --btn-active-text: #06202a;
+
+  /* Larger default button sizing for touch */
+  --btn-height: 7.5rem;      /* ↑ */
+  --btn-font-size: 1.85rem;  /* ↑ */
+  --btn-padding-y: 1.8rem;   /* ↑ */
+
+  
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+
+html { font-size: 18px; -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  background: linear-gradient(180deg, #0b1220, #0f172a);
+  color: var(--text);
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.container {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.panel {
+  width: min(900px, 96vw);
+  background: rgba(11, 18, 32, 0.8);
+  border: 1px solid #1f2937;
+  border-radius: 18px;
+  padding: 1.25rem;
+  backdrop-filter: blur(8px);
+  position: relative;              /* <-- add: anchor for the info button */
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;  /* pushes subtitle left, info button right */
+  margin-bottom: 0.75rem;
+  min-height: calc(4rem + 0.75rem); /* still reserves space for the button */
+  position: relative; /* anchor for children */
+}
+.title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.subtitle { 
+  color: var(--muted);
+  margin: 0.25rem 0 0;
+  font-size: 1.3rem;   /* larger text */
+  font-weight: 500;    /* bold */
+  letter-spacing: 0.5px; /* subtle spacing for readability */
+  color:rgb(251, 255, 0);
+}
+.tagline {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem; /* small sentence */
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+/* --- Info button (top-right) --- */
+.icon-btn {
+  position: static;  /* no absolute overlap */
+  width: 10rem;
+  height: 5rem;
+  border-radius: 9999px;
+  border: 2px solid var(--btn-border);
+  background: var(--btn);
+  color: var(--text);
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  line-height: 1;
+  user-select: none;
+  touch-action: manipulation;
+}
+.icon-btn:active {
+  background: var(--btn-active);
+  color: var(--btn-active-text);
+  border-color: var(--btn-active);
+  transform: scale(0.98);
+}
+
+/* --- GRID --- */
+/* Always side-by-side (three columns). */
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+/* --- BUTTONS --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--btn-height);
+  padding: var(--btn-padding-y) 1rem;
+  border-radius: 16px;
+  border: 3px solid var(--btn-border);
+  background: var(--btn);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 800;
+  font-size: var(--btn-font-size);
+  letter-spacing: 0.3px;
+  transition: transform .02s ease, filter .15s ease;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.btn:active {
+  background: var(--btn-active);
+  color: var(--btn-active-text);
+  border-color: var(--btn-active);
+  transform: scale(0.985);
+  filter: saturate(120%);
+}
+
+.btn:focus-visible {
+  outline: 4px solid rgba(6, 182, 212, 0.6);
+  outline-offset: 3px;
+}
+
+/* Optional larger preset (kept for future pages) */
+.btn.lg { --btn-height: 8rem; --btn-font-size: 3rem; --btn-padding-y: 1.9rem; }
+.btn.xl { --btn-height: 8.5rem; --btn-font-size: 3rem; --btn-padding-y: 6rem; }
+
+/* Utility area for secondary actions like "Back" on subpages */
+.actions { margin-top: 1rem; display: grid; gap: 0.75rem; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+
+/* Landscape tuning on very small displays */
+@media (max-height: 480px) and (orientation: landscape) {
+  .panel { padding: 0.75rem; }
+  .btn { min-height: 4.25rem; font-size: 1.35rem; }
+}

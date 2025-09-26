@@ -1,0 +1,175 @@
+{% extends "catalog/catalog_base.html" %}
+{% block content %}
+  <div class="crumbs">
+    <a href="{{ url_for('catalog_home') }}">All Categories</a> ›
+    <span>{{ category_name or category_id }}</span>
+  </div>
+  <h1 class="page-title">{{ category_name or category_id }}</h1>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="panel">
+        <div class="panel-title">Filter</div>
+        <input id="freetext" class="input" type="search" placeholder="Search MPN / Manufacturer / Attribute">
+        <div class="panel-note">Type to filter table rows.</div>
+      </div>
+
+      <!-- My List (unique items, no qty) -->
+      <div class="panel" id="listPanel">
+        <div class="panel-title">My List <span id="listCount" class="muted">(0)</span></div>
+        <div id="listItems" class="mini-list empty-state">No items yet. Click “Add to List”.</div>
+        <div class="list-actions">
+          <div class="actions-grid two-rows">
+            <button class="btn primary block" id="btnDownloadQR"  title="Download a QR code of the list">Download QR</button>
+            <button class="btn block"          id="btnDownloadCSV" title="Download CSV file">Download CSV</button>
+            <button class="btn danger ghost block span-2" id="btnClearList" title="Clear list">Clear List</button>
+          </div>
+          <div class="panel-note">List is stored in this browser only.</div>
+        </div>
+
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Stats</div>
+        <div class="panel-kv">
+          <div>Parts:</div><div>{{ parts|length }}</div>
+          <div>Total Qty:</div><div>{{ parts|sum(attribute="qty") }}</div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="content">
+      {% if parts|length == 0 %}
+        <div class="empty">No in-stock parts in this category.</div>
+      {% else %}
+        <table class="tbl" id="partsTable">
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>MPN & Description</th>
+              <th>Manufacturer</th>
+              <th>Qty</th>
+              <th>Bin(s)</th>
+              <th>Attributes</th>
+              <th>Datasheet</th>
+              <th>Product</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for p in parts %}
+            {% set attrs = p.attributes or {} %}
+            {% set keys = attrs.keys()|list %}
+            {% set top_keys = [] %}
+            {% for k in keys %}
+              {% if top_keys|length < 4 %}
+                {% set _ = top_keys.append(k) %}
+              {% endif %}
+            {% endfor %}
+            <tr class="part-row"
+                data-part='{{ {
+                  "part_id": p.part_id,
+                  "mpn": p.mpn,
+                  "manufacturer": p.manufacturer,
+                  "description": p.description or p.detailed,
+                  "category_id": category_id,
+                  "image_url": p.image_url,
+                  "datasheet_url": p.datasheet_url,
+                  "product_url": p.product_url
+                } | tojson | e }}'
+                data-mpn="{{ p.mpn|e }}"
+                data-mfr="{{ (p.manufacturer or '')|e }}"
+                data-attrs="{{ (p.attributes|tojson)|e }}">
+
+              <td class="cell-img">
+                {% if p.image_url %}
+                  <img class="thumb" alt="Image of {{ p.mpn }}" src="{{ p.image_url }}">
+                {% else %}
+                  <div class="thumb thumb-placeholder">No image</div>
+                {% endif %}
+              </td>
+
+              <td class="cell-mpn">
+                <div class="mpn">
+                  {{ p.mpn }}
+                  <!-- Copy MPN icon -->
+                  <button class="icon-btn copy-mpn" title="Copy MPN" aria-label="Copy MPN">📋</button>
+                </div>
+                <div class="desc">{{ p.description or p.detailed }}</div>
+              </td>
+
+              <td>{{ p.manufacturer or '' }}</td>
+              <td class="cell-qty">{{ p.qty }}</td>
+
+              <!-- Bins: bin codes only -->
+              <td class="cell-bins">
+                {% if p.bins and p.bins|length %}
+                  {% for b in p.bins[:4] %}
+                    <span class="bin-pill">{{ b.position }}</span>
+                  {% endfor %}
+                  {% if p.bins|length > 4 %}
+                    <span class="bin-more" title="{{ p.bins|tojson }}">+{{ p.bins|length - 4 }} more</span>
+                  {% endif %}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+
+              <td class="cell-attrs">
+                {% if top_keys|length == 0 %}
+                  —
+                {% else %}
+                  <div class="attr-list">
+                    {% for k in top_keys %}
+                      <div class="attr"><span class="k">{{ k.replace('_',' ') }}</span><span class="v">
+                        {% set v = attrs[k] %}
+                        {% if v is sequence and v is not string %}
+                          {{ v|join(', ') }}
+                        {% else %}
+                          {{ v }}
+                        {% endif %}
+                      </span></div>
+                    {% endfor %}
+                  </div>
+                  {% if keys|length > top_keys|length %}
+                  <details class="attr-details"><summary>More</summary>
+                    <div class="attr-list">
+                      {% for k in keys if k not in top_keys %}
+                        <div class="attr"><span class="k">{{ k.replace('_',' ') }}</span><span class="v">
+                          {% set v = attrs[k] %}
+                          {% if v is sequence and v is not string %}
+                            {{ v|join(', ') }}
+                          {% else %}
+                            {{ v }}
+                          {% endif %}
+                        </span></div>
+                      {% endfor %}
+                    </div>
+                  </details>
+                  {% endif %}
+                {% endif %}
+              </td>
+
+              <td class="cell-link">
+                {% if p.datasheet_url %}
+                  <a class="link" href="{{ p.datasheet_url }}" target="_blank" rel="noopener">Datasheet ↗</a>
+                {% else %} — {% endif %}
+              </td>
+              <td class="cell-link">
+                {% if p.product_url %}
+                  <a class="link" href="{{ p.product_url }}" target="_blank" rel="noopener">Product ↗</a>
+                {% else %} — {% endif %}
+              </td>
+
+              <td class="cell-actions">
+                <!-- Make this blue -->
+                <button class="btn-mini primary add-to-list">Add to List</button>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}

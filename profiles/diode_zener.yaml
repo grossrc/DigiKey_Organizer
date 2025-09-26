@@ -1,0 +1,21 @@
+id: diode_zener
+version: 1.0.1
+source_categories:
+- Diodes - Zener - Single
+- Diodes - Zener - Arrays
+traits:
+- has_package_code
+- has_mounting_type
+- has_dimensions
+attributes:
+  map:
+    zener_voltage_vz_v:
+    - Voltage - Zener (Nom) (Vz)
+    power_max_w:
+    - Power - Max
+    tolerance_pct:
+    - Tolerance
+    current_test_it_a:
+    - Current - Test
+source_category_patterns:
+- (?i)Diodes?.*Zener

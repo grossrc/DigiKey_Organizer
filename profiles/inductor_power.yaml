@@ -1,0 +1,27 @@
+id: inductor_power
+version: 1.0.1
+source_categories:
+- Fixed Inductors
+- Power Inductors
+traits:
+- has_package_code
+- has_mounting_type
+- has_operating_temp
+- has_dimensions
+attributes:
+  map:
+    inductance_h:
+    - Inductance
+    tolerance_pct:
+    - Tolerance
+    dc_resistance_ohm:
+    - DC Resistance (DCR)
+    saturation_current_a:
+    - Current - Saturation (Isat)
+    rms_current_a:
+    - Current - Rating (Irms)
+    - Current - RMS
+    srf_hz:
+    - Frequency - Self Resonant
+source_category_patterns:
+- (?i)Inductors?.*(Power|Fixed)

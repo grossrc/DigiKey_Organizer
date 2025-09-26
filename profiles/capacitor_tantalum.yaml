@@ -1,0 +1,49 @@
+id: capacitor_tantalum
+version: 1.0.0
+source_categories:
+  - "Tantalum Capacitors"
+source_category_patterns:
+  - "(?i)Tantalum.*Capacitors?"
+
+traits:
+  - has_package_code
+  - has_mounting_type
+  - has_operating_temp
+  - has_dimensions
+
+attributes:
+  map:
+    capacitance_f: ["Capacitance"]
+    tolerance_pct: ["Tolerance"]
+    voltage_rating_v: ["Voltage - Rated","Voltage Rating"]
+    operating_temp_range: ["Operating Temperature"]
+    esr_ohm: ["ESR (Equivalent Series Resistance)"]
+    leakage_current_a: ["Leakage Current"]
+    failure_rate: ["Failure Rate"]                      # e.g., MIL “B”, “C”
+    case_code: ["Manufacturer Size Code"]               # e.g., A, B, C, D
+    ratings: ["Ratings"]
+    applications: ["Applications"]
+    mounting_type: ["Mounting Type"]
+    package_case_text: ["Package / Case"]
+    size_dim_text: ["Size / Dimension"]
+    height_text: ["Height - Seated (Max)"]
+
+  validators:
+    capacitance_f: { gt: 0 }
+    voltage_rating_v: { gt: 0 }
+
+display_order:
+  - capacitance_f
+  - tolerance_pct
+  - voltage_rating_v
+  - operating_temp_range
+  - esr_ohm
+  - leakage_current_a
+  - failure_rate
+  - case_code
+  - ratings
+  - applications
+  - mounting_type
+  - package_case_text
+  - size_dim_text
+  - height_text

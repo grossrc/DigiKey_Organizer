@@ -1,0 +1,62 @@
+id: capacitor_aluminum_polymer
+version: 1.0.0
+source_categories:
+  - "Aluminum - Polymer Capacitors"
+source_category_patterns:
+  - "(?i)Aluminum.*Polymer.*Capacitors?"
+
+traits:
+  - has_package_code
+  - has_mounting_type
+  - has_operating_temp
+  - has_dimensions
+
+attributes:
+  map:
+    capacitance_f: ["Capacitance"]
+    tolerance_pct: ["Tolerance"]
+    voltage_rating_v: ["Voltage - Rated","Voltage Rating"]
+    operating_temp_range: ["Operating Temperature"]
+
+    # Polymer highlights (very low ESR; ripple typically specified at 100 kHz)
+    esr_ohm: ["ESR (Equivalent Series Resistance)"]
+    impedance_ohm: ["Impedance"]
+    ripple_current_highfreq_a: ["Ripple Current @ High Frequency","Ripple Current"]
+    leakage_current_a: ["Leakage Current"]
+    lifetime_hours_at_temp: ["Lifetime @ Temp"]            # present on many polymer families
+    ratings: ["Ratings"]
+    applications: ["Applications"]
+
+    # Mechanics
+    mounting_type: ["Mounting Type"]
+    package_case_text: ["Package / Case"]
+    size_dim_text: ["Size / Dimension"]
+    height_text: ["Height - Seated (Max)"]
+    diameter_body_text: ["Diameter"]
+    lead_spacing_mm: ["Lead Spacing"]
+    termination_style: ["Termination"]
+    surface_land_size: ["Surface Mount Land Size"]
+
+  validators:
+    capacitance_f: { gt: 0 }
+    voltage_rating_v: { gt: 0 }
+
+display_order:
+  - capacitance_f
+  - tolerance_pct
+  - voltage_rating_v
+  - operating_temp_range
+  - esr_ohm
+  - ripple_current_highfreq_a
+  - leakage_current_a
+  - lifetime_hours_at_temp
+  - ratings
+  - applications
+  - mounting_type
+  - package_case_text
+  - size_dim_text
+  - height_text
+  - diameter_body_text
+  - lead_spacing_mm
+  - termination_style
+  - surface_land_size

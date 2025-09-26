@@ -1,0 +1,30 @@
+id: opamp
+version: 1.0.1
+source_categories:
+- Linear - Amplifiers - Instrumentation, OP Amps, Buffer Amps
+traits:
+- has_package_code
+- has_mounting_type
+- has_operating_temp
+- has_dimensions
+attributes:
+  map:
+    amplifier_type:
+    - Amplifier Type
+    gbw_hz:
+    - Gain Bandwidth Product
+    slew_rate_vus:
+    - Slew Rate
+    vnoise_nvhz:
+    - Voltage - Noise (Typ) @ f
+    rail_to_rail:
+    - Output Type
+    vos_v:
+    - Voltage - Input Offset
+    supply_min_v:
+    - Voltage - Supply, Single/Dual (±) Min
+    supply_max_v:
+    - Voltage - Supply, Single/Dual (±) Max
+source_category_patterns:
+- (?i)Amplifiers?.*(OP|Operational)\s*Amp
+- (?i)Instrumentation.*Amplifiers?

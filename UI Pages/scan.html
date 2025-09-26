@@ -1,0 +1,548 @@
+<!-- /UI Pages/scan.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Scan Part</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+
+  <style>
+    :root { --pad: 16px; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; background:#0b0f14; color:#fff; }
+
+    /* Camera layer */
+    .stage { position: fixed; inset: 0; height: 100dvh; }
+    .video-wrap { position: absolute; inset: 0; overflow: hidden; background: #000; }
+    video { width: 100%; height: 100%; object-fit: cover; background: #000; }
+
+    /* Bottom toolbar */
+    .bottom { position: absolute; left: 8px; right: 8px; bottom: 8px; display:flex; gap:8px; align-items:center; justify-content:flex-start; padding: 6px 8px; background: rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.18); border-radius: 12px; backdrop-filter: blur(4px); }
+    .btn { appearance:none; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.10); color:#fff; padding:.45rem .7rem; border-radius:10px; font-weight:600; cursor:pointer; font-size:.95rem; }
+    .btn.primary{ background:#2b67f6; border-color:#2b67f6; }
+
+    /* Fullscreen success overlay */
+    .capture { position: absolute; inset: 0; display:none; align-items:center; justify-content:center; background: rgba(0,0,0,.85); backdrop-filter: blur(4px); z-index: 10; }
+    .capture.open { display:flex; }
+    .capture .card { display:flex; flex-direction:column; align-items:center; gap:14px; }
+    .capture .check { width: 90px; height: 90px; border-radius: 50%; background: #19c37d; display:grid; place-items:center; }
+    .capture .check svg { width: 56px; height: 56px; color: #06140e; }
+    .capture .msg { font-weight: 700; font-size: 1.4rem; }
+    .capture .sub { font-size: 1rem; opacity: .9; }
+
+    /* INFO SHEET: now full-height (slides from bottom to TOP) */
+    .sheet { position: fixed; inset: 0; background:#11161d; border-radius: 0; box-shadow: 0 -10px 40px rgba(0,0,0,.4); transform: translateY(100%); transition: transform .28s ease; z-index: 20; display:flex; flex-direction:column; }
+    .sheet.open { transform: translateY(0); }
+    .sheet .content { padding: 18px; padding-bottom: calc(18px + env(safe-area-inset-bottom)); min-height: 100dvh; display:flex; flex-direction:column; overflow:auto; }
+
+    .grid { display:grid; gap: 12px; grid-template-columns: 120px 1fr; align-items: start; }
+    .grid img { width: 120px; height: 120px; object-fit: contain; background:#0b0f14; border-radius:12px; }
+    .meta small { opacity:.8; }
+    .kv { margin-top:10px; display:grid; grid-template-columns: auto 1fr; gap:6px 12px; }
+    .kv div { opacity:.9; }
+
+    label { font-size: .95rem; opacity: .95; }
+    input[type="text"], input[type="number"] { width: 100%; padding:.6rem .7rem; border-radius:10px; border:1px solid rgba(255,255,255,.16); background:#0e131a; color:#fff; }
+
+    .row { display:flex; gap: 12px; }
+
+    .desc { margin: 6px 0 4px; line-height: 1.35; opacity: .95; }
+
+    .qty-wrap { display: grid; grid-template-columns: 90px 1fr 90px; align-items: center; gap: 10px; }
+    .qty-btn { font-size: 2rem; line-height: 1; padding: 1rem 0; border-radius: 14px; }
+    .qty-input { font-size: 2rem; text-align: center; padding: 1rem; border-radius: 14px; }
+
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); display:none; align-items: center; justify-content: center; padding:20px; }
+    .modal.open { display:flex; }
+    .card { background:#121820; padding: 24px; border-radius: 16px; width: min(640px, 96vw); box-shadow: 0 20px 50px rgba(0,0,0,.45); display:flex; flex-direction:column; gap:20px; }
+    .card h3 { margin:0; font-size:1.5rem; }
+    .card p { margin:0; font-size:1rem; opacity:.85; }
+    .input-row { display:flex; flex-direction:column; gap:8px; }
+    .input-row label { font-size:1rem; }
+    .input-row input { font-size:1.2rem; padding:1rem; border-radius:10px; }
+    .actions { display:flex; gap:12px; justify-content:flex-end; flex-wrap:wrap; }
+    .actions .btn { flex:1; text-align:center; font-size:1.05rem; padding:.85rem 1rem; }
+
+    /* Sticky bottom action bar inside the full-height sheet */
+    .actions-row { margin-top:auto; padding: 12px var(--pad) calc(12px + env(safe-area-inset-bottom)); background: rgba(17,22,29,1); display:flex; gap:12px; border-top: 1px solid rgba(255,255,255,.12); box-shadow: 0 -10px 30px rgba(0,0,0,.35); z-index: 25; }
+    .actions-row .btn { flex:1; }
+    .btn.big {
+      padding: 3rem 3rem;
+      min-height: 210px;
+      font-size: 1.3rem;
+      border-radius: 55px;
+      line-height: 1.25;
+    }
+
+    /* Quick loading overlay */
+    .loading {
+      position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+      background: rgba(0,0,0,.75); backdrop-filter: blur(4px); z-index: 1000;
+    }
+    .loading.open { display: flex; }
+    .loading-card {
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      background: #121820; border: 1px solid rgba(255,255,255,.12); border-radius: 16px;
+      padding: 24px 28px; min-width: 240px; box-shadow: 0 20px 50px rgba(0,0,0,.45);
+    }
+    .loading-msg { font-weight: 700; font-size: 1.1rem; opacity: .95; }
+
+    /* Spinner */
+    .spinner {
+      width: 56px; height: 56px; border-radius: 50%;
+      border: 4px solid rgba(255,255,255,.18);
+      border-top-color: #2b67f6;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+
+  </style>
+</head>
+<body>
+  <main class="stage" id="stage">
+    <section class="video-wrap">
+      <video id="video" autoplay playsinline muted></video>
+
+      <!-- Fullscreen success overlay -->
+      <div class="capture" id="captureOverlay" aria-live="polite" aria-hidden="true">
+        <div class="card">
+          <div class="check" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+          </div>
+          <div class="msg">Code captured</div>
+          <div class="sub">Fetching part details…</div>
+        </div>
+      </div>
+
+      <div class="bottom">
+        <button class="btn" id="btnCancelCam">Cancel</button>
+        <button class="btn" id="btnManual">Manual entry</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Quick loading overlay -->
+  <div class="loading" id="loadingOverlay" aria-live="polite" aria-hidden="true">
+    <div class="loading-card" role="status" aria-label="Indexing part">
+      <div class="spinner" aria-hidden="true"></div>
+      <div class="loading-msg">Indexing part…</div>
+    </div>
+  </div>
+
+
+  <section class="sheet" id="previewSheet" aria-live="polite">
+    <div class="content">
+      <div class="content-body">
+        <div class="grid">
+          <img id="p_image" alt="Part image" />
+          <div class="meta">
+            <h2 id="p_mpn" style="margin:0 0 6px 0"></h2>
+            <small id="p_mfr"></small>
+            <p id="p_desc" class="desc"></p>
+            <div class="kv" id="p_attr"></div>
+          </div>
+        </div>
+
+        <hr style="border-color: rgba(255,255,255,.12); margin: 14px 0;" />
+
+        <div class="row">
+          <div style="flex:1">
+            <label for="qty">Quantity</label>
+            <div class="qty-wrap">
+              <button class="btn qty-btn" id="qtyMinus" aria-label="Decrease quantity">−</button>
+              <input type="number" id="qty" class="qty-input" min="0" step="1" inputmode="numeric" />
+              <button class="btn qty-btn" id="qtyPlus" aria-label="Increase quantity">+</button>
+            </div>
+          </div>
+          <div style="flex:1">
+            <label for="position">Position / Bin</label>
+            <input type="text" id="position" placeholder="e.g. A3-14" required />
+            <div id="positionNote" style="display:none; color:#e0dd44; font-size:.9rem; margin-top:6px;">
+              <!-- filled by JS when part exists -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button class="btn" id="btnCancel">Cancel</button>
+        <button class="btn primary" id="btnIndex">Index part</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="modal" id="manualModal" role="dialog" aria-modal="true" aria-labelledby="manualTitle">
+    <div class="card">
+      <h3 id="manualTitle">Manual part lookup</h3>
+      <p>Scan timed out or failed. Enter a Digi-Key or MFR part number to continue.</p>
+      <div class="input-row">
+        <label for="manualInput">Part Number</label>
+        <input id="manualInput" type="text" placeholder="e.g. 296-12345-1-ND or SN74HC595N" autofocus />
+      </div>
+      <div class="actions">
+        <button class="btn" id="btnManualClose">Back to scanner</button>
+        <button class="btn primary" id="btnManualLookup">Lookup</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='/scanner_helper.js') }}" defer></script>
+
+  <script>
+  (function(){
+    const video = document.getElementById('video');
+    const btnManual = document.getElementById('btnManual');
+    const btnCancelCam = document.getElementById('btnCancelCam');
+
+    const captureOverlay = document.getElementById('captureOverlay');
+
+    const sheet = document.getElementById('previewSheet');
+    const manualModal = document.getElementById('manualModal');
+    const manualInput = document.getElementById('manualInput');
+    const btnManualLookup = document.getElementById('btnManualLookup');
+    const btnManualClose = document.getElementById('btnManualClose');
+
+    const p_image = document.getElementById('p_image');
+    const p_mpn = document.getElementById('p_mpn');
+    const p_mfr = document.getElementById('p_mfr');
+    const p_desc = document.getElementById('p_desc');
+    const p_attr = document.getElementById('p_attr');
+    const qty = document.getElementById('qty');
+    const position = document.getElementById('position');
+    const btnIndex = document.getElementById('btnIndex');
+    const btnCancel = document.getElementById('btnCancel');
+
+    const qtyMinus = document.getElementById('qtyMinus');
+    const qtyPlus  = document.getElementById('qtyPlus');
+
+    const loadingOverlay = document.getElementById('loadingOverlay');
+
+    let stream = null;
+    let detector = null;
+    let scanning = false;
+    let timeoutHandle = null;
+    let lastCode = null;
+    let preferredDeviceId = null;
+
+    function openSheet(){ sheet.classList.add('open'); }
+    function closeSheet(){ sheet.classList.remove('open'); }
+    function openManual(){ manualModal.classList.add('open'); setTimeout(()=>manualInput.focus(), 50); }
+    function closeManual(){ manualModal.classList.remove('open'); }
+
+    function showLoading(msg = 'Working…') {
+      loadingOverlay.querySelector('.loading-msg').textContent = msg;
+      loadingOverlay.classList.add('open');
+      loadingOverlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function hideLoading() {
+      loadingOverlay.classList.remove('open');
+      loadingOverlay.setAttribute('aria-hidden', 'true');
+    }
+
+    function showCapture(msg){
+      if (msg) captureOverlay.querySelector('.msg').textContent = msg;
+      captureOverlay.classList.add('open');
+      captureOverlay.setAttribute('aria-hidden','false');
+    }
+    function hideCapture(){
+      captureOverlay.classList.remove('open');
+      captureOverlay.setAttribute('aria-hidden','true');
+    }
+
+    async function enumerateCameras(){
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videos = devices.filter(d => d.kind === 'videoinput');
+        if (!videos.length) return null;
+        const back = videos.find(d => /back|rear|environment/i.test(d.label));
+        return (back && back.deviceId) || videos[0].deviceId;
+      } catch (e) { return null; }
+    }
+
+    async function startCamera(){
+      try {
+        video.setAttribute('autoplay', '');
+        video.setAttribute('muted', '');
+        video.setAttribute('playsinline', '');
+        video.muted = true;
+
+        if (!preferredDeviceId) preferredDeviceId = await enumerateCameras();
+
+        const constraints = preferredDeviceId
+          ? { video: { deviceId: { exact: preferredDeviceId } } }
+          : { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } };
+
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+        await video.play();
+
+        startTimeout();
+        await startDetectLoop();
+      } catch (err) {
+        openManual();
+      }
+    }
+
+    function stopCamera(){
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      scanning = false;
+      clearTimeout(timeoutHandle);
+    }
+
+    function startTimeout(){
+      clearTimeout(timeoutHandle);
+      timeoutHandle = setTimeout(() => {
+        openManual();
+      }, 35000); // 35s
+    }
+
+    async function startDetectLoop(){
+      scanning = true;
+
+      if ('BarcodeDetector' in window) {
+        try {
+          const supported = await window.BarcodeDetector.getSupportedFormats?.();
+          const want = ['data_matrix','qr_code','code_128','code_39','ean_13','upc_a','upc_e','pdf417'];
+          const fmts = supported && supported.length ? want.filter(f => supported.includes(f)) : want;
+          detector = new window.BarcodeDetector({ formats: fmts });
+        } catch {}
+      }
+
+      if (detector) {
+        const step = async () => {
+          if (!scanning) return;
+          try {
+            const codes = await detector.detect(video);
+            if (codes && codes.length) { handleCode(codes[0].rawValue || codes[0].rawData || ''); return; }
+          } catch {}
+          requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      } else if (window.ZXing) {
+        const ZX = window.ZXing;
+        const hints = new Map();
+        if (ZX.DecodeHintType && ZX.BarcodeFormat) {
+          hints.set(ZX.DecodeHintType.POSSIBLE_FORMATS, [
+            ZX.BarcodeFormat.DATA_MATRIX,
+            ZX.BarcodeFormat.QR_CODE,
+            ZX.BarcodeFormat.CODE_128,
+            ZX.BarcodeFormat.CODE_39
+          ]);
+        }
+        const reader = new ZX.BrowserMultiFormatReader(hints);
+        const deviceId = preferredDeviceId || (await (async () => {
+          const devs = await reader.listVideoInputDevices();
+          return devs[0]?.deviceId || null;
+        })());
+        reader.decodeFromVideoDevice(deviceId, video, (result, err) => {
+          if (!scanning) return;
+          if (result) { handleCode(result.getText()); }
+        });
+      } else {
+        openManual();
+      }
+    }
+
+    async function handleCode(text){
+      if (!text || text === lastCode) return;
+      lastCode = text;
+
+      showCapture('Code captured');
+      stopCamera();
+
+      try {
+        const res = await fetch('/api/lookup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scanned_text: text })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Lookup failed');
+        hideCapture();
+        renderPreview(data.preview);
+      } catch (e) {
+        hideCapture();
+        openManual();
+      }
+    }
+
+    function renderPreview(preview){
+      openSheet();
+      const h = preview.header || {};
+      p_image.src = h.image_url || '';
+      p_image.alt = h.mpn ? ('Image for ' + h.mpn) : 'Part image';
+      p_mpn.textContent = h.mpn || '(no MPN)';
+      p_mfr.textContent = h.manufacturer || '';
+      p_desc.textContent = h.detailed_description || h.description || '';
+
+      // Show only the TOP 4 attributes to avoid scrolling
+      p_attr.innerHTML = '';
+      const attrs = preview.attributes || {};
+      const keys = Object.keys(attrs).sort((a,b) => a.localeCompare(b)).slice(0, 4);
+      for (const k of keys) {
+        const v = attrs[k];
+        const dk = document.createElement('div'); dk.textContent = k.replace(/_/g,' ') + ':'; p_attr.appendChild(dk);
+        const dv = document.createElement('div'); dv.textContent = Array.isArray(v) ? v.join(', ') : String(v); p_attr.appendChild(dv);
+      }
+
+      qty.value = Number(preview.qty_default || 0);
+      position.value = preview.position_default || '';
+
+      const positionNote = document.getElementById('positionNote');
+      if (preview.existing) {
+        if (preview.existing.blocked_by) {
+          // Previous bin is occupied by a different part → do NOT auto-fill
+          const b = preview.existing.blocked_by;
+          position.value = ''; // leave required field blank
+          //positionNote.textContent =
+          //  `Note: Previously stored in bin ${b.position}, but it is now occupied by ${b.mpn} (qty ${b.qty_on_hand}). Choose a new bin.`;
+          //positionNote.style.display = 'block';
+        } else if (preview.existing.position) {
+          // Safe suggestion — current stock or an actually empty last-known bin
+          position.value = preview.existing.position;
+          positionNote.textContent = `This part exists in the Database. It's recommended to place them together in bin ${preview.existing.position}.`;
+          positionNote.style.display = 'block';
+        } else {
+          positionNote.style.display = 'none';
+        }
+      } else {
+        positionNote.style.display = 'none';
+      }
+
+
+      btnIndex.onclick = async () => {
+        // Require Position/Bin on the client
+        if (!position.value.trim()) {
+          position.focus();
+          if (position.reportValidity) {
+            position.setCustomValidity('Position/Bin is required');
+            position.reportValidity();
+            position.setCustomValidity('');
+          } else {
+            alert('Position/Bin is required');
+          }
+          return;
+        }
+
+        // Disable actionable controls while saving
+        btnIndex.disabled = true;
+        btnCancel.disabled = true;
+        qty.disabled = true;
+        position.disabled = true;
+
+        // Show quick loading overlay (with a minimum show time to avoid flicker)
+        const minShowMs = 350;
+        const startedAt = performance.now();
+        showLoading('Indexing part…');
+
+        try {
+          const edits = { quantity: Number(qty.value || 0), position: position.value.trim() };
+          const payload = { edits, raw_scan_fields: preview.raw_scan_fields || {}, mpn: (preview.header||{}).mpn };
+          const res = await fetch('/api/intake', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          if (!data.ok) throw new Error(data.error || 'Save failed');
+
+          // Ensure loader stays long enough to be perceptible
+          const elapsed = performance.now() - startedAt;
+          if (elapsed < minShowMs) await new Promise(r => setTimeout(r, minShowMs - elapsed));
+          hideLoading();
+
+          const saved = data.saved || {};
+          // Replace the body content with a simple summary
+          sheet.querySelector('.content .content-body').innerHTML = `
+            <h2 style="margin:0 0 10px 0">✓ Indexed</h2>
+            <p><strong>MPN:</strong> ${saved.mpn || (preview.header||{}).mpn || ''}</p>
+            <p><strong>Part ID:</strong> ${saved.part_id ?? '—'}</p>
+            <p><strong>Intake ID:</strong> ${saved.intake_id ?? '—'}</p>
+            <p><strong>Position:</strong> ${saved.position ?? edits.position}</p>
+          `;
+
+          // Swap the sticky bottom bar actions
+          const actionsRow = sheet.querySelector('.actions-row');
+          actionsRow.innerHTML = `
+            <a class="btn big" href="/">Back to Home</a>
+            <a class="btn primary big" href="{{ url_for('scan_in') }}">Scan another</a>
+          `;
+        } catch (e) {
+          // Keep the loader visible for a beat, then show error
+          const elapsed = performance.now() - startedAt;
+          if (elapsed < minShowMs) await new Promise(r => setTimeout(r, minShowMs - elapsed));
+          hideLoading();
+          alert('Save error: ' + e.message);
+
+          // Re-enable controls so the user can retry
+          btnIndex.disabled = false;
+          btnCancel.disabled = false;
+          qty.disabled = false;
+          position.disabled = false;
+        }
+      };
+
+
+      btnCancel.onclick = () => { window.location.href = '/'; };
+    }
+
+    // Press-and-hold qty controls
+    function hold(btn, stepFn) {
+      let t1, t2, speed = 300;
+      const tick = () => { stepFn(); t2 = setTimeout(tick, speed); speed = Math.max(60, speed - 30); };
+      const clear = () => { clearTimeout(t1); clearTimeout(t2); };
+      btn.addEventListener('mousedown', () => { stepFn(); speed = 300; t1 = setTimeout(tick, 350); });
+      btn.addEventListener('mouseup', clear);
+      btn.addEventListener('mouseleave', clear);
+      btn.addEventListener('touchstart', (e) => { e.preventDefault(); stepFn(); speed = 300; t1 = setTimeout(tick, 350); }, {passive:false});
+      btn.addEventListener('touchend', clear);
+    }
+    function step(delta) {
+      let v = Number(qty.value || 0) + delta;
+      if (v < 0) v = 0;
+      qty.value = v;
+    }
+    hold(qtyMinus, () => step(-1));
+    hold(qtyPlus,  () => step(+1));
+    qty.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp')   { e.preventDefault(); step(+1); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); step(-1); }
+    });
+
+    // Manual flow and camera-cancel
+    btnManual.addEventListener('click', openManual);
+    btnManualClose.addEventListener('click', () => { closeManual(); startCamera(); });
+    btnManualLookup.addEventListener('click', async () => {
+      const pn = manualInput.value.trim(); if (!pn) return;
+      try {
+        const res = await fetch('/api/lookup', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            manual_part_number: pn,
+            quantity: Number(qty.value||0),
+            position: position.value.trim()
+          })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Lookup failed');
+        closeManual();
+        stopCamera();
+        renderPreview(data.preview);
+      } catch (e) { alert(e.message); }
+    });
+
+    btnCancelCam.addEventListener('click', () => { stopCamera(); window.location.href = '/'; });
+
+    if (!('mediaDevices' in navigator)) {
+      openManual();
+    } else {
+      startCamera();
+    }
+
+    window.addEventListener('beforeunload', stopCamera);
+  })();
+  </script>
+</body>
+</html>

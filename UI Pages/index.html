@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Home</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <div class="header">
+        <div class="title-group">
+          <p class="subtitle">DigiKey Electronics Inventory</p>
+          <p class="tagline">Scan, checkout, or manage parts in the local inventory.</p>
+        </div>
+        <a class="icon-btn info" href="{{ url_for('info') }}" aria-label="Info">Help</a>
+      </div>
+
+      <!-- Buttons now sit side-by-side -->
+      <div class="grid-3">
+        <a class="btn xl" href="{{ url_for('checkout') }}">Check out</a>
+        <a class="btn xl" href="{{ url_for('scan_in') }}">Scan-In</a>
+        <a class="btn xl" href="{{ url_for('DBreset') }}">Database</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

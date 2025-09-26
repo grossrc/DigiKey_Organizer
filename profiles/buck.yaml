@@ -1,0 +1,31 @@
+id: buck
+version: 1.0.1
+source_categories:
+- PMIC - Voltage Regulators - DC DC Switching Regulators
+- Voltage Regulators - Switching
+traits:
+- has_package_code
+- has_mounting_type
+- has_operating_temp
+- has_dimensions
+attributes:
+  map:
+    topology:
+    - Topology
+    vin_min_v:
+    - Voltage - Input (Min)
+    vin_max_v:
+    - Voltage - Input (Max)
+    vout_min_v:
+    - Voltage - Output (Min)
+    vout_max_v:
+    - Voltage - Output (Max)
+    iout_max_a:
+    - Current - Output
+    freq_switch_hz:
+    - Frequency - Switching
+    synchronous:
+    - Synchronous Rectifier
+source_category_patterns:
+- (?i)Voltage Regulators.*(Switching|DC\s*DC)
+- (?i)(Buck|Step[-\s]?Down)

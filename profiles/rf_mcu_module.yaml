@@ -1,0 +1,104 @@
+id: rf_mcu_module
+version: 1.0.0
+# Exact/likely Digi-Key labels + resilient patterns
+source_categories:
+  - "RF Transceiver Modules and Modems"
+  - "RF Modules"
+  - "RF Transceiver Modules"
+  - "Wireless Modules"
+source_category_patterns:
+  - "(?i)RF.*(Transceiver|Module|Modem)"
+  - "(?i)Wireless.*(Module|Modem)"
+  - "(?i)(Wi[- ]?Fi|BLE|Bluetooth|802\\.15\\.4|Zigbee|Thread).*Module"
+
+traits:
+  - has_package_code        # some modules are castellated SMT or LGA
+  - has_mounting_type       # SMD / Through Hole / Castellated
+  - has_operating_temp
+  - has_dimensions
+  - has_interface           # UART/SPI/I2C, etc.
+
+attributes:
+  map:
+    # RF stack / air interface
+    rf_family_standard: ["RF Family/Standard","RF Family","Standard"]
+    protocol_stack: ["Protocol","Protocol - Supported"]   # e.g., BLE 5, Wi-Fi b/g/n, 802.15.4
+    frequency_hz: ["Frequency","Frequency - Center/Band"]
+    data_rate_bps: ["Data Rate","Data Rate - Max"]
+    modulation: ["Modulation"]
+    tx_power_dbm: ["Power - Output","Output Power"]
+    rx_sensitivity_dbm: ["Sensitivity"]
+    antenna_type: ["Antenna Type"]        # Chip, PCB Trace, External, U.FL
+    antenna_connector: ["Connector Type"]  # U.FL, MHF4, etc.
+    certified_regions: ["Approvals","Certifications","Regulatory Certifications"]  # FCC/IC/CE/TELEC
+    security_features: ["Security Features"]
+
+    # On-module MCU / SoC resources
+    core: ["Core Processor","Core"]
+    core_size_bits: ["Core Size"]
+    speed_hz: ["Speed","CPU Speed"]
+    program_memory_size_bits: ["Program Memory Size","Flash Size"]
+    ram_size_bits: ["RAM Size","SRAM Size"]
+    peripherals: ["Peripherals"]
+
+    # I/O / interfaces to host
+    interface: ["Interface","Interface Type"]     # trait also normalizes
+    gpio_count: ["Number of I/O","GPIOs"]
+
+    # Power
+    supply_min_v: ["Voltage - Supply (Min)","Voltage - Supply (Vcc/Vdd) Min"]
+    supply_max_v: ["Voltage - Supply (Max)","Voltage - Supply (Vcc/Vdd) Max"]
+    current_tx_ma: ["Current - Transmitting","Current - TX"]
+    current_rx_ma: ["Current - Receiving","Current - RX"]
+    current_sleep_ua: ["Current - Sleep","Current - Shutdown","Current - Deep Sleep"]
+
+    # Mechanical
+    mounting_type: ["Mounting Type"]       # trait also handles mapping
+    package_code: ["Package / Case"]       # modules often have package/case text
+    size_dim_text: ["Size / Dimension"]    # trait parses mm
+    height_mm_text: ["Height"]             # trait parses mm
+
+    # Misc
+    operating_temp_range: ["Operating Temperature"]
+    features: ["Features"]
+
+  validators:
+    supply_min_v: { gt: 0 }
+    supply_max_v: { gt: 0 }
+    frequency_hz: { gt: 1e6 }    # >1 MHz
+    tx_power_dbm: { }            # leave open (can be negative)
+    rx_sensitivity_dbm: { }      # negative dBm typical
+    program_memory_size_bits: { gt: 0 }
+    ram_size_bits: { gt: 0 }
+
+display_order:
+  - rf_family_standard
+  - protocol_stack
+  - frequency_hz
+  - data_rate_bps
+  - modulation
+  - tx_power_dbm
+  - rx_sensitivity_dbm
+  - antenna_type
+  - antenna_connector
+  - certified_regions
+  - core
+  - core_size_bits
+  - speed_hz
+  - program_memory_size_bits
+  - ram_size_bits
+  - peripherals
+  - interface
+  - gpio_count
+  - supply_min_v
+  - supply_max_v
+  - current_tx_ma
+  - current_rx_ma
+  - current_sleep_ua
+  - mounting_type
+  - package_code
+  - size_dim_text
+  - height_mm_text
+  - operating_temp_range
+  - security_features
+  - features

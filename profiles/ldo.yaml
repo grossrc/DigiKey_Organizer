@@ -1,0 +1,33 @@
+id: ldo
+version: 1.0.1
+source_categories:
+- PMIC - Voltage Regulators - Linear
+- Voltage Regulators - Linear, Low Drop Out (LDO) Regulators
+- Voltage Regulators - Linear
+- PMIC - Linear Regulators
+traits:
+- has_package_code
+- has_mounting_type
+- has_operating_temp
+- has_dimensions
+attributes:
+  map:
+    vin_min_v:
+    - Voltage - Input (Min)
+    vin_max_v:
+    - Voltage - Input (Max)
+    vout_v:
+    - Voltage - Output (Min/Fixed)
+    - Voltage - Output (Max)
+    - Output Voltage
+    iout_max_a:
+    - Current - Output
+    dropout_v:
+    - Voltage Dropout (Max) @ Current
+    iq_a:
+    - Current - Quiescent (Iq)
+    psrr_db:
+    - PSRR
+source_category_patterns:
+- (?i)Voltage Regulators.*Linear.*(LDO|Low\s*Drop\s*Out|Low-?Dropout)
+- (?i)PMIC.*Linear

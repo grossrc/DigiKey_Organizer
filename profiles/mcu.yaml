@@ -1,0 +1,37 @@
+id: mcu
+version: 1.0.2
+source_categories:
+  - "Embedded - Microcontrollers"
+  - "Microcontrollers"
+source_category_patterns:
+  - "(?i)\\bMicrocontrollers?\\b"
+traits:
+  - has_package_code
+  - has_mounting_type
+  - has_operating_temp
+  - has_dimensions
+  - has_interface
+attributes:
+  map:
+    core: ["Core Processor","Core"]
+    core_size_bits: ["Core Size"]
+    speed_hz: ["Speed"]
+    program_memory_size_bits: ["Program Memory Size"]
+    ram_size_bits: ["RAM Size"]
+    peripherals: ["Peripherals"]
+    supply_min_v: ["Voltage - Supply (Vcc/Vdd) Min","Voltage - Supply (Min)"]
+    supply_max_v: ["Voltage - Supply (Vcc/Vdd) Max","Voltage - Supply (Max)"]
+  validators:
+    program_memory_size_bits: { gt: 0 }
+    ram_size_bits: { gt: 0 }
+display_order:
+  - core
+  - core_size_bits
+  - speed_hz
+  - program_memory_size_bits
+  - ram_size_bits
+  - peripherals
+  - supply_min_v
+  - supply_max_v
+  - package_code
+  - mounting_type

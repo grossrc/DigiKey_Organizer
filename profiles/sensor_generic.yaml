@@ -1,0 +1,125 @@
+id: sensor_generic
+version: 1.0.0
+
+# Exact Digi-Key category names that should map here (broad net)
+source_categories:
+  - "Sensors, Transducers"
+  - "Pressure Sensors, Transducers"
+  - "Temperature Sensors"
+  - "Magnetic Sensors"
+  - "Position Sensors"
+  - "Proximity Sensors"
+  - "Optical Sensors - Ambient Light, IR, UV"
+  - "Optical Sensors - Distance Measuring"
+  - "Accelerometers"
+  - "Gyroscopes"
+  - "Inertial Measurement Units (IMUs)"
+  - "Humidity, Moisture Sensors"
+  - "Gas Sensors"
+  - "Flow Sensors"
+  - "Current Sensors"
+  - "Force Sensors, Load Cells"
+  - "Strain Gauges"
+
+# Resilient matching for category path variants (case-insensitive)
+source_category_patterns:
+  - "(?i)Sensors?,\\s*Transducers?"
+  - "(?i)Pressure\\s*Sensors?"
+  - "(?i)Temperature\\s*Sensors?"
+  - "(?i)Magnetic\\s*Sensors?"
+  - "(?i)Proximity\\s*Sensors?"
+  - "(?i)Accelerometers?|Gyroscopes?|IMUs?"
+  - "(?i)Humidity|Moisture\\s*Sensors?"
+  - "(?i)Gas\\s*Sensors?"
+  - "(?i)Optical\\s*Sensors?"
+  - "(?i)Flow\\s*Sensors?"
+  - "(?i)Current\\s*Sensors?"
+  - "(?i)Force\\s*Sensors?|Load\\s*Cells?"
+  - "(?i)Strain\\s*Gauges?"
+
+traits:
+  - has_package_code
+  - has_mounting_type
+  - has_operating_temp
+  - has_dimensions
+  - has_interface    # for I2C/SPI/UART etc. if exposed
+
+attributes:
+  map:
+    # --- Common, cross-sensor keys ---
+    applications: ["Applications"]
+    interface: ["Interface", "Communication Interface", "Protocol"]                 # (trait also fills if short)
+    output_type: ["Output Type", "Output"]                                          # e.g., Wheatstone Bridge, Analog, Digital, I2C
+    output_signal: ["Output", "Signal Type"]                                        # text (e.g., 0.5V~4.5V, I2C, PWM, 0~27.5 mV (5V))
+    supply_voltage_min_v: ["Voltage - Supply (Min)", "Voltage - Supply, Min", "Supply Voltage (Min)"]
+    supply_voltage_max_v: ["Voltage - Supply (Max)", "Voltage - Supply, Max", "Supply Voltage (Max)"]
+    supply_voltage_range_v: ["Voltage - Supply"]                                     # e.g., "1.5V ~ 12V"
+    supply_current_ma: ["Current - Supply", "Current - Supply (Max)"]
+    accuracy_pct: ["Accuracy", "Total Error Band"]                                  # ±0.15%, ±1.5%FSS etc.
+    resolution: ["Resolution"]
+    sensitivity: ["Sensitivity"]
+    bandwidth_hz: ["Bandwidth"]
+    sampling_rate_sps: ["Sampling Rate", "Sampling Rate (samples per second)"]
+    response_time_ms: ["Response Time"]
+    features: ["Features"]
+    termination_style: ["Termination Style"]
+    ingress_protection: ["Ingress Protection"]
+    # Dimensions & mechanicals parsed by traits; keep raw hooks if needed
+    size_dim_text: ["Size / Dimension"]
+    height_text: ["Height - Seated (Max)", "Height"]
+    thickness_text: ["Thickness (Max)"]
+    package_case_text: ["Package / Case"]
+    # --- Pressure-specific (present on pressure sensors) ---
+    pressure_type: ["Pressure Type"]                                                # Absolute, Gauge, Differential, Vented Gauge, etc.
+    pressure_range: ["Operating Pressure", "Pressure Range"]                        # e.g., "30PSI (206.84kPa)"
+    pressure_max: ["Maximum Pressure", "Overpressure"]
+    port_size: ["Port Size"]
+    port_style: ["Port Style"]
+    media_compatibility: ["Media"]                                                  # if present
+    temperature_compensation: ["Temperature Compensation", "Compensation"]          # if present
+    # --- Magnetic / position / motion (if present) ---
+    axis: ["Axis", "Axes"]
+    measuring_for: ["For Measuring"]                                                # e.g., Angle, Linear, Rotary
+    range: ["Sensing Range", "Measurement Range", "Linear Range"]
+    rotation_angle_deg: ["Rotation Angle - Electrical, Mechanical"]
+    # --- Environmental ---
+    operating_temp_range: ["Operating Temperature"]                                 # parsed by traits
+
+  validators:
+    supply_voltage_min_v: { gt: 0 }
+    supply_voltage_max_v: { gt: 0 }
+    accuracy_pct: { gt: 0 }
+    # basic sanity if we materialize numeric range pieces:
+    # pressure values and currents become numbers downstream
+
+display_order:
+  - applications
+  - interface
+  - output_type
+  - output_signal
+  - supply_voltage_min_v
+  - supply_voltage_max_v
+  - accuracy_pct
+  - resolution
+  - sensitivity
+  - bandwidth_hz
+  - sampling_rate_sps
+  - response_time_ms
+  - pressure_type
+  - pressure_range
+  - pressure_max
+  - port_size
+  - port_style
+  - media_compatibility
+  - temperature_compensation
+  - axis
+  - measuring_for
+  - range
+  - rotation_angle_deg
+  - mounting_type
+  - termination_style
+  - ingress_protection
+  - package_code
+  - size_dim_text
+  - height_text
+  - thickness_text

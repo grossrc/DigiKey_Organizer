@@ -1,0 +1,24 @@
+id: connector_header
+version: 1.0.1
+source_categories:
+- Rectangular Connectors - Headers, Male Pins
+traits:
+- has_mounting_type
+- has_dimensions
+attributes:
+  map:
+    positions:
+    - Number of Positions
+    rows:
+    - Number of Rows
+    pitch_mm:
+    - Pitch
+    contact_finish:
+    - Contact Finish - Mating
+    current_rating_a:
+    - Current Rating (Amps)
+    voltage_rating_v:
+    - Voltage Rating
+source_category_patterns:
+- (?i)Headers?,\s*Male\s*Pins
+- (?i)Rectangular.*Headers?
