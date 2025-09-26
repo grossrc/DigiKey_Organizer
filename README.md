@@ -38,7 +38,7 @@ On a fresh Raspberry Pi running 64bit OS, paste the following line in the termin
 ```
 bash -c '
 set -euo pipefail
-URL="https://raw.githubusercontent.com/grossrc/DigiKey_Organizer/main/README.md"
+URL="https://raw.githubusercontent.com/grossrc/DigiKey_Organizer/main/deploy/install.sh"
 TMP="$(mktemp)"
 if command -v curl >/dev/null 2>&1; then
   curl -fsSL "$URL" -o "$TMP"
