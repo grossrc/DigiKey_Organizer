@@ -41,9 +41,9 @@ set -euo pipefail
 sudo apt-get update
 sudo apt-get install -y git
 git clone https://github.com/grossrc/DigiKey_Organizer.git ~/DigiKey_Organizer
-cd ~/DigiKey_Organizer/deploy
-chmod +x install.sh
-./install.sh
+cd ~/DigiKey_Organizer
+chmod +x deploy/install.sh
+./deploy/install.sh
 '
 ```
 
