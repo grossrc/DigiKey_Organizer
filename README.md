@@ -40,8 +40,10 @@ bash -c '
 set -euo pipefail
 sudo apt-get update
 sudo apt-get install -y git
-git clone https://github.com/grossrc/DigiKey_Organizer.git ~/DigiKey_Organizer
-cd ~/DigiKey_Organizer
+sudo mkdir -p /opt/catalog
+sudo chown "$USER":"$USER" /opt/catalog
+git clone https://github.com/grossrc/DigiKey_Organizer.git /opt/catalog
+cd /opt/catalog
 chmod +x deploy/install.sh
 ./deploy/install.sh
 '
@@ -270,6 +272,7 @@ sudo systemctl reload nginx
 # Troubleshooting
 - If the program boots up, but you're having trouble scanning in parts, this is probably an issue with your API credentials. I included a Digikey_API_TEST.py script which you can use to input your credentials (or allow them to be pulled directly from the .env file) and ensure you get a proper return. If not- this is an issue with DigiKey API or your credentials.
 - If the program boots up, but you cannot access lab-parts.local/catalog, this might mean that your database isn't connected properly. Make sure you didn't accidently change any of the default .env variables for the DB. If you did, make sure that they line up. Some devices might also fail to resolve the mDNS .local address. Make sure to try this on a few devices (not mobile) first.
+  - If you ever need to change the API credentials you need to change the .env file located in /opt/catalog. Do this by running ```nano /opt/catalog/.env```
 - If your program does not boot up at all, use the verification in step 6 to see if the server is actually running. If it's running and you don't see anything then it's likely an issue in step 8. If there's a server issue, then check the logs to see what caused the failure.
 - For the sake of time, I chose not explicitly require the python version 3.13.2 the program was written on. However, this always has the risk of causing dependency issues in the future if Python depreciates libraries I use in here.
 

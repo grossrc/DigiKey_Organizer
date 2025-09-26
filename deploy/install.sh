@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ===== Config =====
-APP_REPO_URL="${APP_REPO_URL:-https://github.com/grossrc/DigiKey_Organizer.git}"
-APP_DIR="/opt/catalog"
+# ===== Paths & Config =====
+# Resolve APP_DIR to the repo root regardless of where we're called from
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+
 HOSTNAME_DESIRED="${HOSTNAME_DESIRED:-lab-parts}"
 PG_VER="17"
 DB_USER="${DB_USER:-murph}"
@@ -16,12 +18,12 @@ KIOSK_DESKTOP_FILE="$HOME/.config/autostart/catalog-kiosk.desktop"
 # ===== Logging =====
 sudo mkdir -p "$(dirname "$LOG_FILE")"
 exec > >(sudo tee -a "$LOG_FILE") 2>&1
-echo "== $(date -Is) Starting DigiKey Organizer setup (public repo) =="
+echo "== $(date -Is) Starting DigiKey Organizer setup =="
 
+# ===== Helpers =====
 retry(){ local t=$1 d=$2; shift 2; for i in $(seq 1 "$t"); do "$@" && return 0 || true; echo "Retry $i/$t…"; sleep "$d"; done; return 1; }
-require_cmd(){ command -v "$1" >/dev/null 2>&1 || { echo "Missing $1"; exit 1; }; }
 
-# 1) Hostname + mDNS
+# ===== 1) Hostname + mDNS =====
 echo "== Hostname/mDNS =="
 retry 3 2 sudo apt-get update
 retry 3 2 sudo apt-get install -y avahi-daemon
@@ -32,11 +34,11 @@ sudo systemctl enable --now avahi-daemon
 sudo systemctl restart avahi-daemon
 echo "Hostname now: $(hostname)"
 
-# 2) System packages
+# ===== 2) System packages =====
 echo "== Base packages =="
 retry 3 2 sudo apt-get install -y python3-venv python3-pip git nginx curl ca-certificates gnupg lsb-release dos2unix
 
-# Postgres 17 repo
+# PostgreSQL 17 repo
 if ! [ -f /etc/apt/sources.list.d/pgdg.list ]; then
   echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
   curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
@@ -45,14 +47,9 @@ retry 3 2 sudo apt-get update
 retry 3 2 sudo apt-get install -y "postgresql-$PG_VER" "postgresql-client-$PG_VER" libpq-dev
 sudo systemctl enable --now postgresql
 
-# 3) App code in /opt/catalog + venv
-echo "== App checkout @ $APP_DIR =="
-sudo mkdir -p "$APP_DIR"; sudo chown "$USER":"$USER" "$APP_DIR"
-if [ ! -d "$APP_DIR/.git" ] && [ ! -f "$APP_DIR/requirements.txt" ]; then
-  git clone "$APP_REPO_URL" "$APP_DIR"
-else
-  (cd "$APP_DIR" && git pull --ff-only || true)
-fi
+# ===== 3) App env at $APP_DIR =====
+echo "== App @ $APP_DIR =="
+# (No clone here if we were launched from /opt/catalog; only create venv/requirements)
 cd "$APP_DIR"
 python3 -m venv .venv
 source .venv/bin/activate
@@ -60,8 +57,8 @@ python --version
 pip install -U pip wheel
 pip install -r requirements.txt
 
-# 4) PostgreSQL DB + schema
-echo "== PostgreSQL schema =="
+# ===== 4) PostgreSQL DB + schema =====
+echo "== PostgreSQL setup =="
 if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${DB_USER}'" | grep -q 1; then
   read -r -p "Enter DB password for user '${DB_USER}' [default: ${DB_PASS_DEFAULT}]: " DB_PASS_INPUT || true
   DB_PASS="${DB_PASS_INPUT:-$DB_PASS_DEFAULT}"
@@ -76,24 +73,35 @@ if [ -f deploy/schema.sql ]; then
   PSQL_URL="postgresql://${DB_USER}:${DB_PASS}@localhost:5432/${DB_NAME}"
   psql "$PSQL_URL" -v ON_ERROR_STOP=1 -f deploy/schema.sql
 else
-  echo "WARN: deploy/schema.sql not found; skipping"
+  echo "WARN: deploy/schema.sql not found; skipping schema load"
 fi
 
-# 5) .env
+# ===== 5) .env (ALWAYS prompt for DigiKey creds) =====
 echo "== .env =="
 [ -f .env ] || { [ -f deploy/.env.example ] && cp deploy/.env.example .env || touch .env; }
+
+# Ensure DB_URL is present/updated
 grep -q '^DB_URL=' .env || echo "DB_URL=postgresql://${DB_USER}:${DB_PASS}@localhost:5432/${DB_NAME}" >> .env
 sed -i "s|^DB_URL=.*|DB_URL=postgresql://${DB_USER}:${DB_PASS}@localhost:5432/${DB_NAME}|" .env
-if ! grep -q '^DIGIKEY_CLIENT_ID=' .env || [ -z "$(grep '^DIGIKEY_CLIENT_ID=' .env | cut -d= -f2-)" ]; then
-  read -rp "Enter DigiKey CLIENT_ID: " DK_ID
-  sed -i "/^DIGIKEY_CLIENT_ID=/d" .env; echo "DIGIKEY_CLIENT_ID=$DK_ID" >> .env
-fi
-if ! grep -q '^DIGIKEY_CLIENT_SECRET=' .env || [ -z "$(grep '^DIGIKEY_CLIENT_SECRET=' .env | cut -d= -f2-)" ]; then
-  read -rsp "Enter DigiKey CLIENT_SECRET: " DK_SECRET; echo
-  sed -i "/^DIGIKEY_CLIENT_SECRET=/d" .env; echo "DIGIKEY_CLIENT_SECRET=$DK_SECRET" >> .env
-fi
 
-# 6) systemd (gunicorn)
+# Always prompt for Digi-Key creds and overwrite .env entries
+while :; do
+  read -rp "Enter DigiKey CLIENT_ID: " DK_ID
+  [ -n "${DK_ID:-}" ] && break
+  echo "CLIENT_ID is required."
+done
+while :; do
+  read -rsp "Enter DigiKey CLIENT_SECRET: " DK_SECRET; echo
+  [ -n "${DK_SECRET:-}" ] && break
+  echo "CLIENT_SECRET is required."
+done
+# Overwrite existing keys (remove if present, then append)
+sed -i "/^DIGIKEY_CLIENT_ID=/d" .env
+sed -i "/^DIGIKEY_CLIENT_SECRET=/d" .env
+echo "DIGIKEY_CLIENT_ID=$DK_ID" >> .env
+echo "DIGIKEY_CLIENT_SECRET=$DK_SECRET" >> .env
+
+# ===== 6) systemd (gunicorn) =====
 echo "== systemd service =="
 sudo tee /etc/systemd/system/catalog.service >/dev/null <<EOF
 [Unit]
@@ -122,7 +130,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now catalog
 sudo systemctl status catalog --no-pager || true
 
-# 7) nginx
+# ===== 7) nginx reverse proxy =====
 echo "== nginx reverse proxy =="
 if [ -d "${APP_DIR}/UI Pages" ]; then
   sudo ln -sfn "${APP_DIR}/UI Pages" "${APP_DIR}/ui_pages"
@@ -150,7 +158,7 @@ sudo ln -sfn "$NGINX_SITE" /etc/nginx/sites-enabled/catalog
 sudo nginx -t
 sudo systemctl reload nginx
 
-# 8) Kiosk
+# ===== 8) Kiosk =====
 echo "== Kiosk autostart =="
 sudo raspi-config nonint do_boot_behaviour B4 || true
 retry 3 2 sudo apt-get install -y chromium-browser curl
