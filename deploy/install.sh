@@ -1,355 +1,157 @@
 #!/usr/bin/env bash
-# ============================================================================
-# Lab Parts Catalog - Resumable One-Shot Installer (Raspberry Pi)
-# - Safe to re-run: step checkpoints + idempotent operations
-# - Robust: retries for network ops, clear logging, fail-fast, cleanup traps
-# - Prompts ONLY for DigiKey client_id and client_secret on first run
-#
-# Defaults (edit if desired):
-#   HOSTNAME=lab-parts
-#   DB_USER=murph
-#   DB_PASS=password
-#   DB_NAME=parts_DB
-#   SERVICE_USER=pi
-#   APP_DIR=/opt/catalog
-#   GIT_REPO=https://github.com/grossrc/Read-Digikey-DataMatrix.git
-#   PYTHON_VERSION=3.13.2
-# ============================================================================
+set -euo pipefail
 
-set -Eeuo pipefail
-
-# ---------- Editable defaults ----------
-HOSTNAME="lab-parts"
+# ===== Config (override via env or edit here) =====
+APP_REPO_URL="${APP_REPO_URL:-https://github.com/grossrc/Read-Digikey-DataMatrix.git}"
 APP_DIR="/opt/catalog"
-GIT_REPO="https://github.com/grossrc/Read-Digikey-DataMatrix.git"
-
-DB_USER="murph"
-DB_PASS="password"
-DB_NAME="parts_DB"
-
-SERVICE_USER="pi"
-PYTHON_VERSION="3.13.2"
-PG_VERSION="17"
-
-# ---------- Paths, logging, state ----------
-STATE_DIR="/var/local/catalog-install"
-STATE_FILE="${STATE_DIR}/state"
+HOSTNAME_DESIRED="${HOSTNAME_DESIRED:-lab-parts}"
+PG_VER="17"
+DB_USER="${DB_USER:-murph}"
+DB_NAME="${DB_NAME:-parts_DB}"
+DB_PASS_DEFAULT="${DB_PASS_DEFAULT:-password}"   # used if you press Enter at prompt
 LOG_FILE="/var/log/catalog-install.log"
-mkdir -p "$STATE_DIR"
-sudo touch "$LOG_FILE" && sudo chown "${USER}:${USER}" "$LOG_FILE"
+NGINX_SITE="/etc/nginx/sites-available/catalog"
+KIOSK_DESKTOP_FILE="$HOME/.config/autostart/catalog-kiosk.desktop"
 
-# Log everything to file + stdout
-exec > >(tee -a "$LOG_FILE") 2>&1
+# ===== Logging =====
+sudo mkdir -p "$(dirname "$LOG_FILE")"
+exec > >(sudo tee -a "$LOG_FILE") 2>&1
 
-# ---------- Utilities ----------
-timestamp() { date +"%Y-%m-%d %H:%M:%S"; }
+echo "== $(date -Is) Starting DigiKey Organizer setup =="
 
-retry() {
-  # retry <max_attempts> <sleep_seconds> -- cmd...
-  local -i max="$1"; shift
-  local -i sleep_sec="$1"; shift
-  local -i attempt=1
-  until "$@"; do
-    if (( attempt >= max )); then
-      echo "[${PWD}] $(timestamp) :: ERROR: '$*' failed after ${max} attempts"
-      return 1
-    fi
-    echo "[${PWD}] $(timestamp) :: WARN: '$*' failed (attempt ${attempt}/${max}); retrying in ${sleep_sec}s..."
-    sleep "${sleep_sec}"
-    ((attempt++))
+# tiny built-in retry (avoid external deps)
+retry() { # retry <times> <sleep> -- <cmd...>
+  local -i times="$1"; shift
+  local -i delay="$1"; shift
+  local i
+  for ((i=1;i<=times;i++)); do
+    "$@" && return 0 || true
+    echo "Retry $i/$times failed; sleeping $delay..." >&2
+    sleep "$delay"
   done
+  echo "ERROR: command failed after $times attempts: $*" >&2
+  return 1
 }
 
-have() { command -v "$1" >/dev/null 2>&1; }
-
-mark_done() { grep -Fxq "$1" "$STATE_FILE" 2>/dev/null || echo "$1" >> "$STATE_FILE"; }
-is_done() { grep -Fxq "$1" "$STATE_FILE" 2>/dev/null; }
-
-run_step() {
-  local name="$1"; shift
-  if is_done "$name"; then
-    echo "== Skipping ${name} (already completed)"
-    return 0
-  fi
-  echo "== Running ${name}"
-  if "$@"; then
-    mark_done "$name"
-    echo "== Completed ${name}"
-  else
-    echo "== FAILED ${name} (see ${LOG_FILE})"
-    exit 1
-  fi
+require_cmd() {
+  command -v "$1" >/dev/null 2>&1 || { echo "Missing required command: $1"; exit 1; }
 }
 
-on_exit() {
-  local code=$?
-  if (( code != 0 )); then
-    echo
-    echo "------------------------------------------------------------"
-    echo "Installer exited with code ${code}. Last lines of ${LOG_FILE}:"
-    echo "------------------------------------------------------------"
-    tail -n 60 "$LOG_FILE" || true
-    echo "------------------------------------------------------------"
-    echo "Fix the issue and re-run the same script; it will resume."
-  fi
-}
-trap on_exit EXIT
+# ===== 1) mDNS hostname =====
+echo "== Setting hostname to $HOSTNAME_DESIRED and enabling avahi =="
+retry 3 2 sudo apt-get update
+retry 3 2 sudo apt-get install -y avahi-daemon
+sudo raspi-config nonint do_hostname "$HOSTNAME_DESIRED" || true
+echo "$HOSTNAME_DESIRED" | sudo tee /etc/hostname >/dev/null
+sudo sed -i "s/^127\.0\.1\.1.*/127.0.1.1   $HOSTNAME_DESIRED/" /etc/hosts
+sudo systemctl enable --now avahi-daemon
+sudo systemctl restart avahi-daemon
+echo "Hostname now: $(hostname)"
 
-# Noninteractive apt
-export DEBIAN_FRONTEND=noninteractive
-APT_INSTALL="sudo apt-get -y --no-install-recommends install"
-APT_UPDATE="sudo apt-get update -o Acquire::Retries=3"
+# ===== 2) System packages (Python, git, nginx, Postgres 17) =====
+echo "== Installing base packages =="
+retry 3 2 sudo apt-get install -y python3-venv python3-pip git nginx curl ca-certificates gnupg lsb-release dos2unix
 
-# ---------- Prompt DigiKey creds once ----------
-if ! grep -qE '^(DIGIKEY_CLIENT_ID|DIGIKEY_CLIENT_SECRET)=' "$STATE_DIR/creds" 2>/dev/null; then
-  read -r -p "Enter DigiKey CLIENT_ID: " DIGIKEY_CLIENT_ID
-  read -r -s -p "Enter DigiKey CLIENT_SECRET (input hidden): " DIGIKEY_CLIENT_SECRET
-  echo
-  {
-    echo "DIGIKEY_CLIENT_ID=${DIGIKEY_CLIENT_ID}"
-    echo "DIGIKEY_CLIENT_SECRET=${DIGIKEY_CLIENT_SECRET}"
-  } > "$STATE_DIR/creds"
-else
-  # shellcheck disable=SC1091
-  source "$STATE_DIR/creds"
-fi
-
-# ---------- Helper: upsert KEY=VALUE in .env ----------
-set_kv() {
-  local key="$1" val="$2"
-  local esc_val
-  esc_val="$(printf '%s' "$val" | sed 's/[&/]/\\&/g')"
-  if [ -f .env ] && grep -qE "^${key}=" .env; then
-    sed -i "s|^${key}=.*|${key}=${esc_val}|" .env
-  else
-    printf "%s=%s\n" "$key" "$val" >> .env
-  fi
-}
-
-# ---------- Sanity checks ----------
-run_step "00_network_check" bash -c '
-  echo "Checking outbound network..."
-  retry 5 3 ping -c1 -W3 8.8.8.8 >/dev/null
-  retry 5 3 curl -fsSLI https://www.python.org >/dev/null
-  retry 5 3 curl -fsSLI https://github.com >/dev/null
-'
-
-run_step "01_refresh_apt" bash -c '
-  retry 5 5 '"$APT_UPDATE"'
-  '"$APT_INSTALL"' ca-certificates curl gnupg lsb-release software-properties-common
-'
-
-run_step "02_hostname_mdns" bash -c '
-  '"$APT_INSTALL"' avahi-daemon raspi-config
-  sudo raspi-config nonint do_hostname "'"$HOSTNAME"'"
-  echo "'"$HOSTNAME"'" | sudo tee /etc/hostname >/dev/null
-  sudo sed -i "s/^127\.0\.1\.1.*/127.0.1.1   '"$HOSTNAME"'/g" /etc/hosts
-  sudo systemctl enable --now avahi-daemon
-  sudo systemctl restart avahi-daemon
-'
-
-run_step "03_enable_ssh" bash -c '
-  '"$APT_INSTALL"' openssh-server
-  if have raspi-config; then sudo raspi-config nonint do_ssh 0 || true; fi
-  sudo systemctl enable --now ssh
-  # authorize local key if present
-  mkdir -p "${HOME}/.ssh"
-  touch "${HOME}/.ssh/authorized_keys"
-  chmod 700 "${HOME}/.ssh" && chmod 600 "${HOME}/.ssh/authorized_keys"
-  for k in id_ed25519.pub id_rsa.pub id_ecdsa.pub; do
-    if [ -f "${HOME}/.ssh/${k}" ]; then
-      grep -q -F "$(cat "${HOME}/.ssh/${k}")" "${HOME}/.ssh/authorized_keys" || cat "${HOME}/.ssh/${k}" >> "${HOME}/.ssh/authorized_keys"
-    fi
-  done
-'
-
-run_step "04_sys_packages_postgres" bash -c '
-  '"$APT_INSTALL"' git nginx build-essential make cmake pkg-config \
-    zlib1g-dev libssl-dev libbz2-dev libreadline-dev libsqlite3-dev libffi-dev \
-    libncurses5-dev libncursesw5-dev xz-utils tk-dev liblzma-dev uuid-dev
-
-  # PGDG repo for PostgreSQL
+# Add PostgreSQL APT repo (if not already)
+if ! [ -f /etc/apt/sources.list.d/pgdg.list ]; then
   echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | \
     sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
-  retry 5 5 curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
+  curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
     sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
-  retry 5 5 '"$APT_UPDATE"'
-  '"$APT_INSTALL"' postgresql-'"$PG_VERSION"' postgresql-client-'"$PG_VERSION"' libpq-dev
-'
+fi
+retry 3 2 sudo apt-get update
+retry 3 2 sudo apt-get install -y "postgresql-$PG_VER" "postgresql-client-$PG_VER" libpq-dev
 
-run_step "05_build_python" bash -c '
-  PY_PREFIX="/opt/python-'"$PYTHON_VERSION"'"
-  if [ ! -x "${PY_PREFIX}/bin/python3" ]; then
-    cd /tmp
-    retry 5 5 curl -fsSLo "Python-'"$PYTHON_VERSION"'.tar.xz" "https://www.python.org/ftp/python/'"$PYTHON_VERSION"'/Python-'"$PYTHON_VERSION"'.tar.xz"
-    tar -xf "Python-'"$PYTHON_VERSION"'.tar.xz"
-    cd "Python-'"$PYTHON_VERSION"'"
-    ./configure --prefix="${PY_PREFIX}" --enable-optimizations --with-lto --enable-shared
-    make -j"$(nproc)"
-    sudo make install
-    echo "${PY_PREFIX}/lib" | sudo tee /etc/ld.so.conf.d/python-'"$PYTHON_VERSION"'.conf >/dev/null
-    sudo ldconfig
-  else
-    echo "Python '"$PYTHON_VERSION"' already present at ${PY_PREFIX}"
-  fi
-'
+# sanity
+sudo systemctl enable --now postgresql
 
-run_step "06_checkout_app" bash -c '
-  sudo mkdir -p "'"$APP_DIR"'"
-  sudo chown "${USER}:${USER}" "'"$APP_DIR"'"
-  if [ ! -d "'"$APP_DIR"'/.git" ]; then
-    retry 5 5 git clone "'"$GIT_REPO"'" "'"$APP_DIR"'"
-  else
-    retry 5 5 git -C "'"$APP_DIR"'" fetch --all --prune
-    retry 5 5 git -C "'"$APP_DIR"'" pull --ff-only
-  fi
-'
+# ===== 3) App code in /opt/catalog + venv =====
+echo "== Preparing application at $APP_DIR =="
+sudo mkdir -p "$APP_DIR"
+sudo chown "$USER":"$USER" "$APP_DIR"
 
-run_step "07_venv_deps" bash -c '
-  cd "'"$APP_DIR"'"
-  PY="/opt/python-'"$PYTHON_VERSION"'/bin/python3"
-  '"$PY_INSTALL_FIX"'
-  "${PY}" -m venv .venv
-  # shellcheck disable=SC1091
-  source .venv/bin/activate
-  python --version
-  pip install -U pip wheel
-  if [ -f requirements.txt ]; then
-    retry 5 5 pip install -r requirements.txt
-  fi
-'
+if [ ! -d "$APP_DIR/.git" ] && [ ! -f "$APP_DIR/requirements.txt" ]; then
+  echo "Cloning app repo: $APP_REPO_URL"
+  git clone "$APP_REPO_URL" "$APP_DIR"
+else
+  echo "App already present; pulling latest…"
+  (cd "$APP_DIR" && git pull --ff-only || true)
+fi
 
-run_step "08_pg_bootstrap" bash -c '
-  # Ensure service up
-  sudo systemctl enable --now postgresql@'"$PG_VERSION"'-main || sudo systemctl enable --now postgresql || true
+cd "$APP_DIR"
+python3 -m venv .venv
+source .venv/bin/activate
+python --version
+pip install -U pip wheel
+pip install -r requirements.txt
 
-  sudo -u postgres psql -v ON_ERROR_STOP=1 <<SQL
-DO \$\$
-BEGIN
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '"'$DB_USER'"') THEN
-    CREATE ROLE '"$DB_USER"' LOGIN PASSWORD '"'$DB_PASS'"';
-  ELSE
-    ALTER ROLE '"$DB_USER"' LOGIN PASSWORD '"'$DB_PASS'"';
-  END IF;
-END
-\$\$;
-SQL
+# ===== 4) PostgreSQL DB + schema =====
+echo "== Configuring PostgreSQL database =="
+# Create user if missing (prompt for password)
+if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${DB_USER}'" | grep -q 1; then
+  echo -n "Enter DB password for user '${DB_USER}' [default: ${DB_PASS_DEFAULT}]: "
+  read -r DB_PASS_INPUT || true
+  DB_PASS="${DB_PASS_INPUT:-$DB_PASS_DEFAULT}"
+  sudo -u postgres psql -c "CREATE ROLE ${DB_USER} LOGIN PASSWORD '$DB_PASS';"
+else
+  # try to use default unless overridden via env
+  DB_PASS="${DB_PASS_DEFAULT}"
+fi
 
-  sudo -u postgres psql -v ON_ERROR_STOP=1 <<SQL
-DO \$\$
-BEGIN
-  IF NOT EXISTS (SELECT FROM pg_database WHERE datname = '"'$DB_NAME'"') THEN
-    CREATE DATABASE '"$DB_NAME"' OWNER '"$DB_USER"';
-  END IF;
-END
-\$\$;
-ALTER DATABASE '"$DB_NAME"' OWNER TO '"$DB_USER"';
-SQL
+# Create DB if missing and set owner
+if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" | grep -q 1; then
+  sudo -u postgres createdb -O "$DB_USER" "$DB_NAME"
+fi
 
-  sudo -u postgres psql -d "'"$DB_NAME"'" -v ON_ERROR_STOP=1 -c "ALTER SCHEMA public OWNER TO '"$DB_USER"'; GRANT ALL ON SCHEMA public TO '"$DB_USER"';"
-'
+# Load schema (idempotent-ish, will stop on error)
+if [ -f deploy/schema.sql ]; then
+  echo "Loading schema from deploy/schema.sql"
+  PSQL_URL="postgresql://${DB_USER}:${DB_PASS}@localhost:5432/${DB_NAME}"
+  psql "$PSQL_URL" -v ON_ERROR_STOP=1 -f deploy/schema.sql || {
+    echo "Schema load reported errors. Check $LOG_FILE"; exit 1; }
+else
+  echo "WARN: deploy/schema.sql not found; skipping schema load"
+fi
 
-run_step "09_load_schema" bash -c '
-  cd "'"$APP_DIR"'"
-  export PGPASSWORD="'"$DB_PASS"'"
-  DBURL="postgresql://'"$DB_USER"':'"$DB_PASS"'@localhost:5432/'"$DB_NAME"'"
+# ===== 5) .env =====
+echo "== Creating/updating .env =="
+if [ ! -f .env ]; then
+  [ -f deploy/.env.example ] && cp deploy/.env.example .env || touch .env
+fi
 
-  if [ ! -f deploy/schema.sql ]; then
-    echo "No deploy/schema.sql found; skipping DB schema load."
-    exit 0
-  fi
+# ensure DB vars present; patch password if needed
+grep -q '^DB_URL=' .env || echo "DB_URL=postgresql://${DB_USER}:${DB_PASS}@localhost:5432/${DB_NAME}" >> .env
+sed -i "s|^DB_URL=.*|DB_URL=postgresql://${DB_USER}:${DB_PASS}@localhost:5432/${DB_NAME}|" .env
 
-  # 1) Pre-create schemas/extensions OUTSIDE functions/DO blocks
-  #    Extract bare CREATE SCHEMA/EXTENSION lines that are not obviously inside a function/DO.
-  #    (Heuristic: we grab top-level lines; anything else gets executed as-is later.)
-  tmpdir="$(mktemp -d)"
-  pre="${tmpdir}/pre.sql"
-  main="${tmpdir}/main.sql"
+# Prompt for Digi-Key credentials if missing/blank
+if ! grep -q '^DIGIKEY_CLIENT_ID=' .env || [ -z "$(grep '^DIGIKEY_CLIENT_ID=' .env | cut -d= -f2-)" ]; then
+  read -rp "Enter DigiKey CLIENT_ID: " DK_ID
+  sed -i "/^DIGIKEY_CLIENT_ID=/d" .env
+  echo "DIGIKEY_CLIENT_ID=$DK_ID" >> .env
+fi
+if ! grep -q '^DIGIKEY_CLIENT_SECRET=' .env || [ -z "$(grep '^DIGIKEY_CLIENT_SECRET=' .env | cut -d= -f2-)" ]; then
+  read -rsp "Enter DigiKey CLIENT_SECRET: " DK_SECRET; echo
+  sed -i "/^DIGIKEY_CLIENT_SECRET=/d" .env
+  echo "DIGIKEY_CLIENT_SECRET=$DK_SECRET" >> .env
+fi
 
-  # Normalize newlines
-  sed "s/\r$//" deploy/schema.sql > "${tmpdir}/schema.norm.sql"
-
-  # Greedy but effective: pull CREATE SCHEMA/EXTENSION statements to run first.
-  # You can expand this list if your file has more forbidden-in-function DDL.
-  awk '
-    BEGIN{IGN=0}
-    /CREATE[[:space:]]+OR[[:space:]]+REPLACE[[:space:]]+FUNCTION|DO[[:space:]]+\$\$/ {IGN=1}
-    IGN==1 {buf=buf $0 "\n"; if ($0 ~ /\$\$[[:space:]]*;[[:space:]]*$/) {IGN=0; print buf; buf="";} next}
-    {print}
-  ' "${tmpdir}/schema.norm.sql" > "${tmpdir}/schema.split.sql"
-
-  # From the top-level portion, extract CREATE SCHEMA / CREATE EXTENSION statements
-  grep -E "^[[:space:]]*CREATE[[:space:]]+SCHEMA|^[[:space:]]*CREATE[[:space:]]+EXTENSION" "${tmpdir}/schema.split.sql" > "${pre}" || true
-
-  # Remove those lines from the main script to avoid re-running them
-  if [ -s "${pre}" ]; then
-    grep -v -E "^[[:space:]]*CREATE[[:space:]]+SCHEMA|^[[:space:]]*CREATE[[:space:]]+EXTENSION" "${tmpdir}/schema.norm.sql" > "${main}"
-  else
-    cp "${tmpdir}/schema.norm.sql" "${main}"
-  fi
-
-  echo "-- PRE DDL" > "${tmpdir}/pre.final.sql"
-  # Ensure schemas are created with the right owner and are idempotent
-  while read -r line; do
-    case "$line" in
-      (*"CREATE SCHEMA "*)
-        sch=$(echo "$line" | sed -n "s/.*CREATE[[:space:]]\+SCHEMA[[:space:]]\+\([a-zA-Z0-9_]\+\).*/\1/p")
-        [ -n "$sch" ] && echo "CREATE SCHEMA IF NOT EXISTS ${sch} AUTHORIZATION "'"$DB_USER"';" >> "${tmpdir}/pre.final.sql"
-        ;;
-      (*"CREATE EXTENSION "*)
-        ext=$(echo "$line" | sed -n "s/.*CREATE[[:space:]]\+EXTENSION[[:space:]]\+\(IF NOT EXISTS[[:space:]]\+\)\{0,1\}\"\{0,1\}\([a-zA-Z0-9_\-]\+\)\"\{0,1\}.*/\2/p")
-        [ -n "$ext" ] && echo "CREATE EXTENSION IF NOT EXISTS \"$ext\";" >> "${tmpdir}/pre.final.sql"
-        ;;
-    esac
-  done < "${pre}"
-
-  # Always ensure public schema ownership (safe to re-run)
-  echo "ALTER SCHEMA public OWNER TO '"$DB_USER"'; GRANT ALL ON SCHEMA public TO '"$DB_USER"';" >> "${tmpdir}/pre.final.sql"
-
-  # 2) Run pre-DDL and then the main schema file with ON_ERROR_STOP
-  if [ -s "${tmpdir}/pre.final.sql" ]; then
-    echo "== Running pre-DDL outside of functions/DO =="
-    psql "$DBURL" -v ON_ERROR_STOP=1 -f "${tmpdir}/pre.final.sql"
-  fi
-
-  echo "== Running main schema =="
-  psql "$DBURL" -v ON_ERROR_STOP=1 -f "${main}"
-
-  unset PGPASSWORD
-'
-
-
-run_step "10_write_env" bash -c '
-  cd "'"$APP_DIR"'"
-  [ -f .env ] || cp deploy/.env.example .env 2>/dev/null || touch .env
-  set_kv DIGIKEY_CLIENT_ID      "'"$DIGIKEY_CLIENT_ID"'"
-  set_kv DIGIKEY_CLIENT_SECRET  "'"$DIGIKEY_CLIENT_SECRET"'"
-  set_kv PGHOST     "localhost"
-  set_kv PGPORT     "5432"
-  set_kv PGDATABASE "'"$DB_NAME"'"
-  set_kv PGUSER     "'"$DB_USER"'"
-  set_kv PGPASSWORD "'"$DB_PASS"'"
-  set_kv FLASK_DEBUG "0"
-  set_kv DATABASE_URL "postgresql://'"$DB_USER"':'"$DB_PASS"'@localhost:5432/'"$DB_NAME"'"
-  echo "== .env summary =="
-  grep -E "^(DIGIKEY_|PGHOST|PGPORT|PGDATABASE|PGUSER|PGPASSWORD|DATABASE_URL|FLASK_DEBUG)=" .env || true
-'
-
-run_step "11_systemd_gunicorn" bash -c '
-  cd "'"$APP_DIR"'"
-  sudo tee /etc/systemd/system/catalog.service >/dev/null <<EOF
+# ===== 6) systemd (gunicorn) =====
+echo "== Installing systemd service =="
+sudo tee /etc/systemd/system/catalog.service >/dev/null <<EOF
 [Unit]
 Description=Catalog Flask App (gunicorn)
 Wants=network-online.target
-After=network-online.target postgresql@'"$PG_VERSION"'-main.service
+After=network-online.target postgresql@${PG_VER}-main.service
 
 [Service]
-User='"$SERVICE_USER"'
+User=${USER}
 Group=www-data
-WorkingDirectory='"$APP_DIR"'
-EnvironmentFile='"$APP_DIR"'/.env
-ExecStartPre=/bin/sh -c '\''for i in $(seq 1 60); do /usr/bin/pg_isready -q -h 127.0.0.1 -p 5432 && exit 0; sleep 1; done; exit 1'\''
-ExecStart='"$APP_DIR"'/.venv/bin/gunicorn -w 2 -b 127.0.0.1:5000 app:app
+WorkingDirectory=${APP_DIR}
+EnvironmentFile=${APP_DIR}/.env
+
+ExecStartPre=/bin/sh -c 'for i in \$(seq 1 60); do /usr/bin/pg_isready -q -h 127.0.0.1 -p 5432 && exit 0; sleep 1; done; exit 1'
+ExecStart=${APP_DIR}/.venv/bin/gunicorn -w 2 -b 127.0.0.1:5000 app:app
+
 Environment=PYTHONUNBUFFERED=1
 StandardOutput=journal
 StandardError=journal
@@ -360,26 +162,28 @@ TimeoutStartSec=90
 [Install]
 WantedBy=multi-user.target
 EOF
-  sudo systemctl daemon-reload
-  sudo systemctl enable --now catalog
-  sudo systemctl --no-pager status catalog || true
-'
 
-run_step "12_verify_local" bash -c '
-  ss -lntp | grep -q ":5000" || (echo "gunicorn not listening on 5000 yet" && false)
-  retry 10 3 curl -fsSI http://127.0.0.1:5000/ >/dev/null
-'
+sudo systemctl daemon-reload
+sudo systemctl enable --now catalog
+sudo systemctl status catalog --no-pager || true
 
-run_step "13_nginx" bash -c '
-  sudo ln -sf "'"$APP_DIR"'/UI Pages" "'"$APP_DIR"'/ui_pages" || true
-  sudo rm -f /etc/nginx/sites-enabled/default
-  sudo tee /etc/nginx/sites-available/catalog >/dev/null <<EOF
+# ===== 7) nginx reverse proxy =====
+echo "== Configuring nginx reverse proxy =="
+# Make UI symlink (use underscores)
+if [ -d "${APP_DIR}/UI Pages" ]; then
+  sudo ln -sfn "${APP_DIR}/UI Pages" "${APP_DIR}/ui_pages"
+fi
+
+# Disable default site
+sudo rm -f /etc/nginx/sites-enabled/default || true
+
+sudo tee "$NGINX_SITE" >/dev/null <<'EOF'
 server {
     listen 80 default_server;
-    server_name '"$HOSTNAME"'.local 127.0.0.1 127.0.1.1 localhost _;
+    server_name lab-parts.local 127.0.0.1 127.0.1.1 localhost _;
 
     location /static/ {
-        alias '"$APP_DIR"'/ui_pages/;
+        alias /opt/catalog/ui_pages/;
         expires 30d;
         access_log off;
     }
@@ -391,20 +195,27 @@ server {
     }
 }
 EOF
-  sudo ln -sf /etc/nginx/sites-available/catalog /etc/nginx/sites-enabled/catalog
-  sudo nginx -t
-  sudo systemctl reload nginx
-'
+sudo ln -sfn "$NGINX_SITE" /etc/nginx/sites-enabled/catalog
+sudo nginx -t
+sudo systemctl reload nginx
 
-run_step "14_optional_kiosk" bash -c '
-  if have raspi-config; then sudo raspi-config nonint do_boot_behaviour B4 || true; fi
-  '"$APT_INSTALL"' chromium-browser dos2unix || true
-  have chromium-browser || '"$APT_INSTALL"' chromium || true
-  cd "'"$APP_DIR"'"
-  [ -f deploy/kiosk-start.sh ] && dos2unix deploy/kiosk-start.sh || true
-  [ -f deploy/kiosk-start.sh ] && sudo install -o "'"$USER"'" -g "'"$USER"'" -m 0755 deploy/kiosk-start.sh /opt/kiosk-start.sh || true
-  mkdir -p "${HOME}/.config/autostart"
-  tee "${HOME}/.config/autostart/catalog-kiosk.desktop" >/dev/null <<'EOF'
+# ===== 8) Kiosk (Chromium autostart) =====
+echo "== Setting up kiosk autostart =="
+# A) Desktop autologin
+sudo raspi-config nonint do_boot_behaviour B4 || true
+
+# B) Chromium
+retry 3 2 sudo apt-get install -y chromium-browser curl
+
+# C) kiosk launcher from repo (if present)
+if [ -f deploy/kiosk-start.sh ]; then
+  dos2unix deploy/kiosk-start.sh || true
+  sudo install -o "$USER" -g "$USER" -m 0755 deploy/kiosk-start.sh /opt/kiosk-start.sh
+fi
+
+# D) desktop autostart entry
+mkdir -p "$(dirname "$KIOSK_DESKTOP_FILE")"
+tee "$KIOSK_DESKTOP_FILE" >/dev/null <<'EOF'
 [Desktop Entry]
 Type=Application
 Name=Catalog Kiosk
@@ -412,29 +223,18 @@ Exec=/opt/kiosk-start.sh
 X-GNOME-Autostart-enabled=true
 X-LXQt-Need-Tray=false
 EOF
-  rm -rf "${HOME}/.config/chromium/Singleton"* "${HOME}/.config/chromium/Crash Reports" 2>/dev/null || true
-'
 
-echo
-echo "===================================================================="
-echo "DONE!"
-echo " - App URL:      http://${HOSTNAME}.local/catalog   (or the Pi's IP)"
-echo " - SSH:          enabled (service 'ssh')"
-echo " - Python:       ${PYTHON_VERSION}"
-echo " - Service:      sudo systemctl status catalog"
-echo " - Log:          ${LOG_FILE}"
-echo " - State:        ${STATE_FILE}"
-echo "Reboot recommended to finalize mDNS/desktop bits: sudo reboot"
-echo "If anything broke, fix it and re-run ./install.sh — it resumes."
-echo "===================================================================="
-# Auto-reboot with countdown
-countdown=10
-while [ "$countdown" -gt 0 ]; do
-  printf "\rRebooting to finalize setup in %d" "$countdown"
-  sleep 1
-  countdown=$((countdown - 1))
-done
-echo
-sudo reboot
+# E) Clear old Chromium locks
+rm -rf "$HOME/.config/chromium/Singleton"* "$HOME/.config/chromium/Crash Reports" 2>/dev/null || true
 
+echo "== Installation complete =="
+echo "Reach the app at: http://${HOSTNAME_DESIRED}.local/catalog (or http://<Pi-IP>/catalog)"
+echo "Log: $LOG_FILE"
 
+# Optional: reboot countdown
+if [ "${NO_REBOOT:-0}" != "1" ]; then
+  echo -n "Rebooting to finalize setup in "
+  for s in 10 9 8 7 6 5 4 3 2 1; do echo -n "$s "; sleep 1; done
+  echo
+  sudo reboot
+fi

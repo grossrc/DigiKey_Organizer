@@ -38,29 +38,12 @@ On a fresh Raspberry Pi running 64bit OS, paste the following line in the termin
 ```
 bash -c '
 set -euo pipefail
-
-# 1) Make sure `retry` exists (comes from moreutils)
-if ! command -v retry >/dev/null 2>&1; then
-  sudo apt-get update
-  sudo apt-get install -y moreutils
-fi
-
-# 2) Fetch your installer
-URL="https://raw.githubusercontent.com/grossrc/Read-Digikey-DataMatrix/main/deploy/install.sh"
-TMP="$(mktemp)"
-if command -v curl >/dev/null 2>&1; then
-  curl -fsSL "$URL" -o "$TMP"
-elif command -v wget >/dev/null 2>&1; then
-  wget -qO "$TMP" "$URL"
-else
-  echo "Error: need curl or wget installed." >&2
-  exit 1
-fi
-chmod +x "$TMP"
-
-# 3) Run it (will prompt for DigiKey CLIENT_ID/SECRET)
-sudo bash "$TMP"
-rm -f "$TMP"
+sudo apt-get update
+sudo apt-get install -y git
+git clone https://github.com/grossrc/DigiKey_Organizer.git ~/DigiKey_Organizer
+cd ~/DigiKey_Organizer
+chmod +x install.sh
+./install.sh
 '
 ```
 
