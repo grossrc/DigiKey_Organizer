@@ -1,1 +1,6 @@
 .env
+__pycache__/Code_Scanner.cpython-313.pyc
+.gitignore
+__pycache__/dk_decoder.cpython-313.pyc
+__pycache__/db_helper.cpython-313.pyc
+__pycache__/Scan_Part.cpython-313.pyc
