@@ -154,21 +154,23 @@ def deepest_category_name(cat: Dict[str, Any]) -> Optional[str]:
     return name
 
 def match_profile_by_source_category(registry, category_obj):
-    # Build full path: ["Integrated Circuits (ICs)", "Power Management (PMIC)", "Voltage Regulators - Linear, Low Drop Out (LDO) Regulators"]
     names = category_name_path(category_obj)
     names_lc = [n.lower() for n in names]
 
     for prof in registry.values():
-        # Exact matches (case-insensitive)
         sc = [s.lower() for s in prof.get("source_categories", [])]
+
+        # 1) exact (case-insensitive)
         if any(n in sc for n in names_lc):
             return prof
 
-        # Substring contains: any profile string contained in any path element
-        if any(any(s in n for n in names_lc) for s in sc):
+        # 2) substring either way:
+        #    - profile string contained in any category path element
+        #    - OR category path element contained in profile string
+        if any(any(s in n or n in s for n in names_lc) for s in sc):
             return prof
 
-        # Optional regex patterns in YAML
+        # 3) regex patterns
         for pat in prof.get("source_category_patterns", []):
             rx = re.compile(pat, flags=re.I)
             if any(rx.search(n) for n in names):

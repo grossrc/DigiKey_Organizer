@@ -1,10 +1,12 @@
 id: opamp
-version: 1.1.0
+version: 1.1.1
 source_categories:
+  - "Instrumentation, Op Amps, Buffer Amps"
   - "Linear - Amplifiers - Instrumentation, OP Amps, Buffer Amps"
 source_category_patterns:
   - "(?i)Amplifiers?.*(OP|Operational)\\s*Amp"
   - "(?i)Instrumentation.*Amplifiers?"
+  - "(?i)Buffer\\s*Amps?"
 
 traits:
   - has_package_code
@@ -14,75 +16,38 @@ traits:
 
 attributes:
   map:
-    # Classification / topology
-    amplifier_type: ["Amplifier Type"]                 # e.g., General Purpose, Instrumentation, Isolation, CFA, Zero-Drift
-    number_of_circuits: ["Number of Circuits"]         # channels
+    amplifier_type: ["Amplifier Type"]
+    number_of_circuits: ["Number of Circuits","Number of Amplifiers"]
 
-    # Bandwidth / speed
-    gbw_hz:
-      - "Gain Bandwidth Product"                       # common label
-      - "-3db Bandwidth"                               # alias seen in your sample
-    slew_rate_vus: ["Slew Rate"]                       # may be "-"; we keep it optional
+    # Bandwidth: support both GBW and 3 dB bandwidth
+    gbw_hz: ["Gain Bandwidth Product","Gain-Bandwidth Product"]
+    bandwidth_3db_hz: ["-3db Bandwidth","-3dB Bandwidth"]
 
-    # Noise / precision
-    vnoise_nvhz:
-      - "Voltage - Noise (Typ) @ f"
-      - "Voltage - Noise Density"
-    vos_v:
-      - "Voltage - Input Offset"
-      - "Input Offset Voltage"
-    vos_drift_uvc:
-      - "Voltage - Input Offset Drift"                 # µV/°C (normalize downstream if desired)
-    cmrr_db:
-      - "CMRR, PSRR (Typ) @ Min/Common"               # sometimes combined
-      - "CMRR (Typical)"
-      - "CMRR (Min)"
+    slew_rate_vus: ["Slew Rate"]
+    vnoise_nvhz: ["Voltage - Noise (Typ) @ f","Voltage Noise Density"]
+    vos_v: ["Voltage - Input Offset","Input Offset Voltage"]
 
-    # Input common-mode / output swing (often text; leave as passthrough)
-    input_voltage_range: ["Voltage - Input Common Mode"]
-    output_type: ["Output Type"]                       # Rail-to-Rail, Push-Pull, etc.
-    rail_to_rail: ["Rail-to-Rail"]                     # Some vendors expose directly as Yes/No
+    input_bias_current_a: ["Current - Input Bias","Input Bias Current"]
+    quiescent_current_a: ["Current - Supply","Current - Supply (Typ)"]
+    output_current_per_channel_a: ["Current - Output / Channel","Current - Output"]
 
-    # Currents & drive
-    input_bias_current_a:
-      - "Current - Input Bias"
-      - "Input Bias Current"
-    supply_current_a:
-      - "Current - Supply"
-      - "Current - Supply (per Channel)"
-    output_current_per_channel_a:
-      - "Current - Output / Channel"
-      - "Current - Output"
+    supply_min_v: ["Voltage - Supply, Single/Dual (±) Min","Voltage - Supply (Min)"]
+    supply_max_v: ["Voltage - Supply, Single/Dual (±) Max","Voltage - Supply (Max)"]
+    supply_span_min_v: ["Voltage - Supply Span (Min)"]
+    supply_span_max_v: ["Voltage - Supply Span (Max)"]
 
-    # Supply range (handle both label styles)
-    supply_min_v:
-      - "Voltage - Supply, Single/Dual (±) Min"
-      - "Voltage - Supply Span (Min)"
-      - "Voltage - Supply (Min)"
-    supply_max_v:
-      - "Voltage - Supply, Single/Dual (±) Max"
-      - "Voltage - Supply Span (Max)"
-      - "Voltage - Supply (Max)"
+    output_type: ["Output Type"]
+    rail_to_rail: ["Rail-to-Rail"]
 
-    # Isolation-amp extras (optional; populated only when present)
-    isolation_voltage_v: ["Voltage - Isolation"]
-    isolation_type: ["Isolation Type"]
-    isolation_common_mode_transient_kv_us:
-      - "Common Mode Transient Immunity (Min)"
-      - "CMTI (Min)"
-
-    # Environment/mech handled by traits
-    operating_temp_range: ["Operating Temperature"]
-    mounting_type: ["Mounting Type"]
-    package_case_text: ["Package / Case"]
-    size_dim_text: ["Size / Dimension"]
-    height_mm_text: ["Height"]
+    cmrr_db: ["CMRR, PSRR (Typ)","CMRR (Typ)"]
+    psrr_db: ["PSRR (Typ)"]
+    input_voltage_range_v: ["Input Voltage Range"]
+    features: ["Features"]
 
   validators:
-    gbw_hz: { gt: 1e3 }              # > 1 kHz (very loose guard)
     number_of_circuits: { gt: 0 }
-    supply_min_v: { gt: 0 }
-    supply_max_v: { gt: 0 }
+    gbw_hz: { gt: 0 }
+    bandwidth_3db_hz: { gt: 0 }
 
 display_order:
   - amplifier_type
