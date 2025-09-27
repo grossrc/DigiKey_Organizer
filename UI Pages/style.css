@@ -103,12 +103,27 @@ body {
 }
 
 /* --- GRID --- */
-/* Always side-by-side (three columns). */
+/* Responsive grid: stacked on mobile, side-by-side on larger screens */
 .grid-3 {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
   margin-top: 1rem;
+  /* Mobile-first: single column */
+  grid-template-columns: 1fr;
+}
+
+/* Tablet and up: 2 columns */
+@media (min-width: 640px) {
+  .grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Desktop and up: 3 columns */
+@media (min-width: 900px) {
+  .grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 /* --- BUTTONS --- */
@@ -154,6 +169,21 @@ body {
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  .btn {
+    --btn-font-size: 1.5rem;  /* Smaller text on mobile */
+    --btn-padding-y: 1.5rem;  /* Adjust padding */
+    min-height: 6rem;         /* Slightly smaller height */
+  }
+
+  .btn.xl {
+    --btn-font-size: 1.75rem; /* Adjust XL buttons for mobile */
+    --btn-padding-y: 1.75rem;
+    min-height: 6.5rem;
+  }
+}
 
 /* Landscape tuning on very small displays */
 @media (max-height: 480px) and (orientation: landscape) {
