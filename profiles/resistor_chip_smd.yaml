@@ -37,9 +37,9 @@ attributes:
       - 20
 display_order:
 - resistance_ohm
+- package_code
 - tolerance_pct
 - power_rating_w
 - temp_coefficient_ppm
-- package_code
 source_category_patterns:
 - (?i)Resistors?.*(Chip|Surface\s*Mount|SMD)

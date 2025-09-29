@@ -55,7 +55,13 @@ a:hover{text-decoration:underline}
 /* bins — ONLY bin codes */
 .cell-bins .bin-pill{
   display:inline-flex;align-items:center;background:#f2f6fd;border:1px solid var(--border);
-  border-radius:999px;padding:4px 10px;margin:2px 6px 2px 0
+  border-radius:999px;padding:4px 10px;margin:2px 6px 2px 0;
+  white-space:nowrap;
+  word-break:keep-all;
+  min-width:3.6em; /* ~6 chars at default font size */
+  max-width:12em;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 .bin-more{color:var(--muted);margin-left:6px}
 
@@ -66,6 +72,14 @@ a:hover{text-decoration:underline}
 
 /* links & actions */
 .cell-link .link{display:block}
+/* Prevent wrapping and word-break in datasheet/product links */
+.cell-link .link {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 16em;
+}
 .btn{appearance:none;border:1px solid var(--border);background:#fff;color:var(--fg);padding:.5rem .75rem;border-radius:10px;font-weight:600;cursor:pointer}
 .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
 .btn.danger{background:#fff0f0;border-color:#ffd6d6;color:var(--red)}
