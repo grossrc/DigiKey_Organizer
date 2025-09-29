@@ -1,3 +1,49 @@
+.btn-mini.add-to-list.already {
+  background: #ffd6d6 !important;
+  border-color: #ffd6d6 !important;
+  color: #c93737 !important;
+}
+.btn-mini.add-to-list.added {
+  background: #1976d2 !important;
+  border-color: #1976d2 !important;
+  color: #fff !important;
+}
+.btn-mini.add-to-list {
+  background: #e0f0ff;
+  border-color: #90c8f6;
+  color: #0b1220;
+  font-size: 1.08rem;
+  font-weight: 700;
+  padding: 0.7rem 1.2rem;
+  min-height: 48px;
+  box-shadow: 0 2px 8px rgba(30,99,255,0.08);
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+}
+.btn-mini.add-to-list:hover {
+  background: #cbe7ff;
+  border-color: #67b3f9;
+}
+.btn-mini.added {
+  background: #1976d2;
+  border-color: #1976d2;
+  color: #fff;
+}
+.btn-mini.already {
+  background: #ffd6d6;
+  border-color: #ffd6d6;
+  color: #c93737;
+}
+/* Make Actions column and Add to List button wider */
+.cell-actions {
+  min-width: 120px;
+  width: 120px;
+}
+
+.btn-mini.already {
+  background: #ffd6d6;
+  border-color: #ffd6d6;
+  color: #c93737;
+}
 :root{
   --bg:#f6f8fb; --fg:#0b1220; --muted:#5d6b7a; --card:#ffffff; --border:#dbe3ec;
   --brand:#1e63ff; --accent:#19c37d; --red:#c93737; --thead:#eef3f9;

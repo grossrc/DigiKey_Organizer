@@ -81,12 +81,16 @@
         saveList(list);
         renderList();
         btn.textContent = 'Added ✓';
-        btn.disabled = true;
-        setTimeout(() => { btn.textContent = 'Add to List'; btn.disabled = false; }, 800);
+  btn.classList.add('added');
+  btn.textContent = 'Added ✓';
+  btn.disabled = true;
+  setTimeout(() => { btn.classList.remove('added'); btn.textContent = 'Add to List'; btn.disabled = false; }, 800);
       } else {
         btn.textContent = 'Already Added';
-        btn.disabled = true;
-        setTimeout(() => { btn.textContent = 'Add to List'; btn.disabled = false; }, 800);
+  btn.classList.add('already');
+  btn.textContent = 'Already Added';
+  btn.disabled = true;
+  setTimeout(() => { btn.classList.remove('already'); btn.textContent = 'Add to List'; btn.disabled = false; }, 800);
       }
     });
   });
