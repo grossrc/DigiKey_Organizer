@@ -37,6 +37,7 @@ attributes:
       - 20
 display_order:
 - resistance_ohm
+- voltage_rating_v
 - package_code
 - tolerance_pct
 - power_rating_w

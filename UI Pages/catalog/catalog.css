@@ -66,6 +66,13 @@ a:hover{text-decoration:underline}
 .bin-more{color:var(--muted);margin-left:6px}
 
 /* attributes */
+.cell-attrs {
+  min-width: 17ch;
+  width: 16ch;
+  max-width: 32ch;
+  word-break: keep-all;
+  white-space: normal;
+}
 .cell-attrs .attr-list{display:grid;gap:6px}
 .attr .k{color:var(--muted);margin-right:6px}
 .attr-details summary{cursor:pointer;color:var(--brand);margin-top:6px}

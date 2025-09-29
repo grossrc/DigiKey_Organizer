@@ -60,13 +60,24 @@
           {% for p in parts %}
             {% set attrs = p.attributes or {} %}
             {% set display_order = p.display_order or [] %}
-            {% set top_keys = [] %}
-            {% for k in display_order %}
-              {% if k in attrs %}
-                {% set _ = top_keys.append(k) %}
-              {% endif %}
-            {% endfor %}
-            {% set more_keys = ((attrs.keys()|list)|reject('in', top_keys)|list) %}
+            {% set keys = attrs.keys()|list %}
+            {% if display_order and display_order|length > 0 %}
+              {% set top_keys = [] %}
+              {% for k in display_order %}
+                {% if k in attrs and top_keys|length < 4 %}
+                  {% set _ = top_keys.append(k) %}
+                {% endif %}
+              {% endfor %}
+              {% for k in keys %}
+                {% if k not in top_keys and top_keys|length < 4 %}
+                  {% set _ = top_keys.append(k) %}
+                {% endif %}
+              {% endfor %}
+              {% set more_keys = ((keys)|reject('in', top_keys)|list) %}
+            {% else %}
+              {% set top_keys = keys[:4] %}
+              {% set more_keys = keys[4:] %}
+            {% endif %}
             <tr class="part-row"
                 data-part='{{ {
                   "part_id": p.part_id,
