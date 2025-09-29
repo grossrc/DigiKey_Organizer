@@ -383,9 +383,13 @@
       const attrs = preview.attributes || {};
       const keys = Object.keys(attrs).sort((a,b) => a.localeCompare(b)).slice(0, 4);
       for (const k of keys) {
-        const v = attrs[k];
-        const dk = document.createElement('div'); dk.textContent = k.replace(/_/g,' ') + ':'; p_attr.appendChild(dk);
-        const dv = document.createElement('div'); dv.textContent = Array.isArray(v) ? v.join(', ') : String(v); p_attr.appendChild(dv);
+  const v = attrs[k];
+  let label = k.replace(/_/g,' ');
+  if (k === 'iout_max_a') label += ' (A)';
+  const dk = document.createElement('div'); dk.textContent = label + ':'; p_attr.appendChild(dk);
+  let value = Array.isArray(v) ? v.join(', ') : String(v);
+  if (k === 'iout_max_a' && typeof v === 'number') value = v.toPrecision(5);
+  const dv = document.createElement('div'); dv.textContent = value; p_attr.appendChild(dv);
       }
 
       qty.value = Number(preview.qty_default || 0);
