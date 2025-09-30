@@ -2,6 +2,7 @@ id: led_discrete
 version: 1.0.1
 source_categories:
 - LED Indication - Discrete
+- LED Color Lighting
 traits:
 - has_package_code
 - has_mounting_type
@@ -17,9 +18,14 @@ attributes:
     luminous_intensity_mcd:
     - Millicandela Rating
     - Luminous Intensity
-    if_test_a:
+    if_test_ma:
     - Current - Test
-    vf_typ_v:
+    Forward Voltage:
     - Voltage - Forward (Vf) (Typ) @ If
+    - Voltage - Forward (Vf) (Typ)
+    Viewing Angle:
+    - Viewing Angle
+    Max Current:
+    - Current - Max
 source_category_patterns:
 - (?i)\bLED\b.*(Discrete|Indicator|Indication)
