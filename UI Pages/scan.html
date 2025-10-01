@@ -39,10 +39,11 @@
     .grid { display:grid; gap: 12px; grid-template-columns: 120px 1fr; align-items: start; }
     .grid img { width: 120px; height: 120px; object-fit: contain; background:#0b0f14; border-radius:12px; }
     .meta small { opacity:.8; }
-    .kv { margin-top:10px; display:grid; grid-template-columns: auto 1fr; gap:6px 12px; }
-    .kv div { opacity:.9; }
+  /* Slightly tighter attribute spacing and smaller text so the preview fits 480px height */
+  .kv { margin-top:10px; display:grid; grid-template-columns: auto 1fr; gap: calc(6px * 0.5) 12px; font-size: 0.95rem; }
+  .kv div { opacity:.9; }
 
-    label { font-size: .95rem; opacity: .95; }
+    label { font-size: .8rem; opacity: .95; }
     input[type="text"], input[type="number"] { width: 100%; padding:.6rem .7rem; border-radius:10px; border:1px solid rgba(255,255,255,.16); background:#0e131a; color:#fff; }
 
     .row { display:flex; gap: 12px; }
@@ -96,6 +97,19 @@
       animation: spin 0.9s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Tighter layout for short screens (e.g. 480px height) to avoid scrolling */
+    @media (max-height: 480px) {
+      .sheet .content {
+        padding-top: 12px;
+        padding-bottom: calc(8px + env(safe-area-inset-bottom));
+      }
+      .grid { gap: 8px; }
+      .grid img { width: 96px; height: 96px; }
+      .kv { gap: calc(6px * 0.5) 10px; font-size: 0.93rem; }
+      .card { padding: 12px; gap: 12px; }
+      .actions-row { padding: 8px calc(var(--pad) * 0.6) calc(8px + env(safe-area-inset-bottom)); }
+    }
 
 
   </style>
@@ -378,14 +392,18 @@
       p_mfr.textContent = h.manufacturer || '';
       p_desc.textContent = h.detailed_description || h.description || '';
 
-      // Show only the TOP 4 attributes to avoid scrolling
+      // Show only the TOP 3 attributes to avoid scrolling
       p_attr.innerHTML = '';
       const attrs = preview.attributes || {};
-      const keys = Object.keys(attrs).sort((a,b) => a.localeCompare(b)).slice(0, 4);
+      const keys = Object.keys(attrs).sort((a,b) => a.localeCompare(b)).slice(0, 3);
       for (const k of keys) {
-        const v = attrs[k];
-        const dk = document.createElement('div'); dk.textContent = k.replace(/_/g,' ') + ':'; p_attr.appendChild(dk);
-        const dv = document.createElement('div'); dv.textContent = Array.isArray(v) ? v.join(', ') : String(v); p_attr.appendChild(dv);
+  const v = attrs[k];
+  let label = k.replace(/_/g,' ');
+  if (k === 'iout_max_a') label += ' (A)';
+  const dk = document.createElement('div'); dk.textContent = label + ':'; p_attr.appendChild(dk);
+  let value = Array.isArray(v) ? v.join(', ') : String(v);
+  if (k === 'iout_max_a' && typeof v === 'number') value = v.toPrecision(5);
+  const dv = document.createElement('div'); dv.textContent = value; p_attr.appendChild(dv);
       }
 
       qty.value = Number(preview.qty_default || 0);

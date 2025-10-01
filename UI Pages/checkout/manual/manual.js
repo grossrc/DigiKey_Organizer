@@ -69,7 +69,8 @@
     filtered = !term ? rows.slice()
                      : rows.filter(it =>
                          (it.mpn||'').toLowerCase().includes(term) ||
-                         (it.manufacturer||'').toLowerCase().includes(term));
+                         (it.manufacturer||'').toLowerCase().includes(term) ||
+                         (it.position_code||'').toLowerCase().includes(term));
     render();
   }
 

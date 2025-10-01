@@ -579,6 +579,24 @@ def _parts_in_category(category_id: str):
 
             rows = cur.fetchall()
 
+    # Attach display_order from profile if available
+    from dk_decoder import match_profile_by_source_category, load_registry
+    registry = globals().get("REGISTRY")
+    # Get category profile
+    cat_profile = None
+    if registry:
+        # Try to get a profile for this category
+        # Use the first part's attributes to guess category if needed
+        # But we have category_id, so use that
+        cat_profile = registry.get(category_id)
+        if not cat_profile:
+            # Try to match by source name
+            cats = _categories_with_stock()
+            cat_name = next((c["source_name"] for c in cats if c["category_id"] == category_id), None)
+            if cat_name:
+                cat_profile = match_profile_by_source_category(registry, {"Name": cat_name})
+    display_order = cat_profile.get("display_order") if cat_profile else None
+
     items = []
     for r in rows:
         items.append({
@@ -593,6 +611,7 @@ def _parts_in_category(category_id: str):
             "attributes": r[8] or {},
             "qty": int(r[9]),
             "bins": r[10] or [],
+            "display_order": display_order,
         })
     return items
 

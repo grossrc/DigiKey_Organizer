@@ -81,12 +81,16 @@
         saveList(list);
         renderList();
         btn.textContent = 'Added ✓';
-        btn.disabled = true;
-        setTimeout(() => { btn.textContent = 'Add to List'; btn.disabled = false; }, 800);
+  btn.classList.add('added');
+  btn.textContent = 'Added ✓';
+  btn.disabled = true;
+  setTimeout(() => { btn.classList.remove('added'); btn.textContent = 'Add to List'; btn.disabled = false; }, 800);
       } else {
         btn.textContent = 'Already Added';
-        btn.disabled = true;
-        setTimeout(() => { btn.textContent = 'Add to List'; btn.disabled = false; }, 800);
+  btn.classList.add('already');
+  btn.textContent = 'Already Added';
+  btn.disabled = true;
+  setTimeout(() => { btn.classList.remove('already'); btn.textContent = 'Add to List'; btn.disabled = false; }, 800);
       }
     });
   });
@@ -96,13 +100,39 @@
     const btnCopy = r.querySelector('.copy-mpn');
     if (!btnCopy) return;
     const mpn = r.dataset.mpn || '';
-    btnCopy.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(mpn);
-        btnCopy.textContent = '✓';
-        setTimeout(()=> btnCopy.textContent = '📋', 600);
-      } catch { alert('Copy failed'); }
-    });
+      btnCopy.addEventListener('click', async () => {
+        // Try modern Clipboard API first
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          try {
+            await navigator.clipboard.writeText(mpn);
+            btnCopy.textContent = '✔';
+            setTimeout(() => { btnCopy.textContent = '📋'; }, 1200);
+          } catch (err) {
+            fallbackCopyTextToClipboard(mpn, btnCopy);
+          }
+        } else {
+          fallbackCopyTextToClipboard(mpn, btnCopy);
+        }
+      });
+
+      // Fallback for browsers/environments without Clipboard API
+      function fallbackCopyTextToClipboard(text, btn) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          const successful = document.execCommand('copy');
+          btn.textContent = successful ? '✔' : '✖';
+        } catch (err) {
+          btn.textContent = '✖';
+        }
+        setTimeout(() => { btn.textContent = '📋'; }, 1200);
+        document.body.removeChild(textarea);
+      }
   });
 
   // ===== CSV export =====

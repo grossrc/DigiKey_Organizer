@@ -38,11 +38,9 @@ attributes:
       - X7T
       - X8R
 display_order:
-- capacitance_f
-- tolerance_pct
 - voltage_rating_v
 - dielectric
 - package_code
-- mounting_type
+- tolerance_pct
 source_category_patterns:
 - (?i)Capacitors?.*Ceramic

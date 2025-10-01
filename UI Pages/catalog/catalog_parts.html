@@ -59,13 +59,25 @@
           <tbody>
           {% for p in parts %}
             {% set attrs = p.attributes or {} %}
+            {% set display_order = p.display_order or [] %}
             {% set keys = attrs.keys()|list %}
-            {% set top_keys = [] %}
-            {% for k in keys %}
-              {% if top_keys|length < 4 %}
-                {% set _ = top_keys.append(k) %}
-              {% endif %}
-            {% endfor %}
+            {% if display_order and display_order|length > 0 %}
+              {% set top_keys = [] %}
+              {% for k in display_order %}
+                {% if k in attrs and top_keys|length < 4 %}
+                  {% set _ = top_keys.append(k) %}
+                {% endif %}
+              {% endfor %}
+              {% for k in keys %}
+                {% if k not in top_keys and top_keys|length < 4 %}
+                  {% set _ = top_keys.append(k) %}
+                {% endif %}
+              {% endfor %}
+              {% set more_keys = ((keys)|reject('in', top_keys)|list) %}
+            {% else %}
+              {% set top_keys = keys[:4] %}
+              {% set more_keys = keys[4:] %}
+            {% endif %}
             <tr class="part-row"
                 data-part='{{ {
                   "part_id": p.part_id,
@@ -121,26 +133,50 @@
                 {% else %}
                   <div class="attr-list">
                     {% for k in top_keys %}
-                      <div class="attr"><span class="k">{{ k.replace('_',' ') }}</span><span class="v">
+                      <div class="attr"><span class="k">{{ k.replace('_',' ') }}{% if k == 'iout_max_a' %} (A){% endif %}</span><span class="v">
                         {% set v = attrs[k] %}
                         {% if v is sequence and v is not string %}
-                          {{ v|join(', ') }}
+                          {% if k == 'iout_max_a' %}
+                            {{ '%.5g' % v }}
+                          {% else %}
+                            {{ v|join(', ') }}
+                          {% endif %}
                         {% else %}
-                          {{ v }}
+                            {% if v is number and v is not integer %}
+                              {% if k == 'iout_max_a' %}
+                                {{ '%.5g' % v }}
+                              {% else %}
+                                {{ '%.5g' % v }}
+                              {% endif %}
+                            {% else %}
+                              {{ v }}
+                            {% endif %}
                         {% endif %}
                       </span></div>
                     {% endfor %}
                   </div>
-                  {% if keys|length > top_keys|length %}
+                  {% if more_keys|length > 0 %}
                   <details class="attr-details"><summary>More</summary>
                     <div class="attr-list">
-                      {% for k in keys if k not in top_keys %}
-                        <div class="attr"><span class="k">{{ k.replace('_',' ') }}</span><span class="v">
+                      {% for k in more_keys %}
+                        <div class="attr"><span class="k">{{ k.replace('_',' ') }}{% if k == 'iout_max_a' %} (A){% endif %}</span><span class="v">
                           {% set v = attrs[k] %}
                           {% if v is sequence and v is not string %}
-                            {{ v|join(', ') }}
+                            {% if k == 'iout_max_a' %}
+                              {{ '%.5g' % v }}
+                            {% else %}
+                              {{ v|join(', ') }}
+                            {% endif %}
                           {% else %}
-                            {{ v }}
+                              {% if v is number and v is not integer %}
+                                {% if k == 'iout_max_a' %}
+                                  {{ '%.5g' % v }}
+                                {% else %}
+                                  {{ '%.5g' % v }}
+                                {% endif %}
+                              {% else %}
+                                {{ v }}
+                              {% endif %}
                           {% endif %}
                         </span></div>
                       {% endfor %}
@@ -162,8 +198,7 @@
               </td>
 
               <td class="cell-actions">
-                <!-- Make this blue -->
-                <button class="btn-mini primary add-to-list">Add to List</button>
+                <button class="btn-mini add-to-list">Add to List</button>
               </td>
             </tr>
           {% endfor %}

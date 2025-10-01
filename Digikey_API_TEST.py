@@ -14,6 +14,7 @@ from pathlib import Path
 from urllib.parse import quote
 from contextlib import closing
 from typing import Any, Iterable
+import sys
 
 # --- Third-party libraries ---
 import requests
@@ -108,11 +109,80 @@ def call_DigiKey_API(part_number):
 
 
 def main():
-    MFR_PN = '1965-ESP32-S3-WROOM-1U-N4CT-ND'
+    # Allow passing a part number on the command line for quick testing
+    MFR_PN = sys.argv[1] if len(sys.argv) > 1 else 'L1CU-FRD1000000000'
     dk_json = call_DigiKey_API(MFR_PN)  # Call DigiKey API and return JSON
     if dk_json:
-        print('----Digikey Return-----')
-        print(dk_json)
+        print('\n---- DigiKey raw JSON (truncated pretty) -----')
+        try:
+            print(json.dumps(dk_json, indent=2))
+        except Exception:
+            # Fallback if not JSON-serializable for some reason
+            print(repr(dk_json))
+
+        # Decode product using the registry to get category + attributes
+        decoded = decode_product(dk_json, REGISTRY)
+
+        print('\n---- Decoded category & profile -----')
+        cat_id = decoded.get('category_id')
+        cat_name = decoded.get('category_source_name')
+        print(f"Category id: {cat_id!s}")
+        print(f"Category name: {cat_name!s}")
+
+        # Profile info
+        if cat_id and cat_id in REGISTRY:
+            prof = REGISTRY.get(cat_id) or {}
+            print(f"Matched profile id: {prof.get('id')}")
+            if prof.get('version'):
+                print(f"Profile version: {prof.get('version')}")
+            sc = prof.get('source_categories') or prof.get('source_category_patterns') or []
+            print(f"Profile source categories/patterns: {len(sc)} entries")
+        else:
+            print('No matching profile found for this category (unknown_other or unmatched).')
+            # Provide hints: try to find candidate profiles by substring or pattern match
+            if cat_name:
+                import re
+                candidates = []
+                for pid, prof in REGISTRY.items():
+                    # check explicit source_categories
+                    for s in (prof.get('source_categories') or []):
+                        try:
+                            if isinstance(s, str) and cat_name.lower() in s.lower():
+                                candidates.append(pid); break
+                        except Exception:
+                            pass
+                    # check source_category_patterns (regex)
+                    for pat in (prof.get('source_category_patterns') or []):
+                        try:
+                            if re.search(pat, cat_name, re.I):
+                                candidates.append(pid); break
+                        except Exception:
+                            pass
+                if candidates:
+                    print('\nProfile candidates based on category name:')
+                    for c in sorted(set(candidates)):
+                        p = REGISTRY.get(c) or {}
+                        print(f" - {c}: {p.get('source_categories') or p.get('source_category_patterns')}")
+
+        print('\n---- Extracted attributes -----')
+        attrs = decoded.get('attributes') or {}
+        if attrs:
+            try:
+                print(json.dumps(attrs, indent=2))
+            except Exception:
+                print(attrs)
+        else:
+            print('(no attributes extracted)')
+
+        print('\n---- Unknown / unmapped vendor parameters -----')
+        unknown = decoded.get('unknown_parameters') or {}
+        if unknown:
+            try:
+                print(json.dumps(unknown, indent=2))
+            except Exception:
+                print(unknown)
+        else:
+            print('(no unknown parameters)')
     else:
         print("API call failed.")
 
