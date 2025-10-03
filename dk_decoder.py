@@ -156,25 +156,43 @@ def deepest_category_name(cat: Dict[str, Any]) -> Optional[str]:
 def match_profile_by_source_category(registry, category_obj):
     names = category_name_path(category_obj)
     names_lc = [n.lower() for n in names]
+    # Avoid very generic single-token matches (e.g., "capacitor(s)")
+    GENERIC_TOKENS = {
+        "capacitors", "capacitor", "resistors", "resistor",
+        "connectors", "connector", "inductors", "inductor",
+        "diodes", "diode", "led", "leds", "module", "modules",
+        "ic", "ics", "semiconductors",
+    }
 
     for prof in registry.values():
-        sc = [s.lower() for s in prof.get("source_categories", [])]
+        sc_list = prof.get("source_categories", []) or []
+        sc = [s.lower() for s in sc_list]
 
         # 1) exact (case-insensitive)
         if any(n in sc for n in names_lc):
             return prof
 
-        # 2) substring either way:
-        #    - profile string contained in any category path element
-        #    - OR category path element contained in profile string
-        if any(any(s in n or n in s for n in names_lc) for s in sc):
-            return prof
-
-        # 3) regex patterns
-        for pat in prof.get("source_category_patterns", []):
+        # 2) regex patterns (allow profiles to opt into precise matching)
+        for pat in prof.get("source_category_patterns", []) or []:
             rx = re.compile(pat, flags=re.I)
             if any(rx.search(n) for n in names):
                 return prof
+
+        # 3) safer substring / word-boundary matching
+        #    - require the matched token not be a highly-generic word like "capacitors"
+        #    - use word-boundary regex so we don't match tiny fragments
+        for s_orig in sc_list:
+            s = (s_orig or "").strip().lower()
+            if not s or s in GENERIC_TOKENS:
+                continue
+            for n in names:
+                n_l = (n or "").strip().lower()
+                if not n_l or n_l in GENERIC_TOKENS:
+                    continue
+                # word-boundary either way
+                if re.search(r"\b" + re.escape(s) + r"\b", n, flags=re.I) or re.search(r"\b" + re.escape(n_l) + r"\b", s, flags=re.I):
+                    return prof
+
     return None
 
 
