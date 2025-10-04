@@ -6,6 +6,15 @@
   </div>
   <h1 class="page-title">{{ category_name or category_id }}</h1>
 
+  {% if profile_exists is defined and not profile_exists %}
+    <div class="panel note">
+      <strong>Note:</strong> This category does not have a parsing profile yet. Parts in this
+      category were matched from the raw DigiKey lookup and may be missing
+      extracted attributes. If you intend to reference this category often, consider creating a profile to improve extraction and
+      classification. Reformat the database afterwards to reflect the change.
+    </div>
+  {% endif %}
+
   <div class="layout">
     <aside class="sidebar">
       <div class="panel">

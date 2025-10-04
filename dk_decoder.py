@@ -196,6 +196,25 @@ def match_profile_by_source_category(registry, category_obj):
     return None
 
 
+def _slugify(s: str) -> str:
+    """Create a filesystem/DB-safe slug from a category name.
+    Keeps lowercase letters, digits, and dashes. Replaces whitespace and
+    punctuation with dashes and collapses repeats. In the future, it would be ideal 
+    to make this a separate column flag in the DB, but this functionality is being
+    built out on an existing DB schema for now.
+    """
+    if not s:
+        return ""
+    # Lowercase
+    s2 = s.lower()
+    # Replace non-alphanumeric with dash
+    import re
+
+    s2 = re.sub(r"[^a-z0-9]+", "-", s2)
+    s2 = re.sub(r"-+", "-", s2).strip("-")
+    return s2 or "unknown"
+
+
 def first_present(d: Dict[str, str], keys) -> Optional[str]:
     for k in keys:
         if k in d and d[k] not in (None, "", "-"):
@@ -369,7 +388,14 @@ def decode_product(raw_json: Dict[str, Any], registry: Dict[str, dict]) -> Dict[
     # Prefer rf_mcu_module over mcu/battery_charger when RF keys are present
     profile = _prefer_rf_module_if_applicable(profile, registry, params)
 
-    cat_id = profile["id"] if profile else "unknown_other"
+    if profile:
+        cat_id = profile["id"]
+    else:
+        # For unmatched categories, generate a deterministic id from the
+        # deepest source category name so different unknown categories do
+        # not all map to a single 'unknown_other' id (which causes clobbers).
+        src_name = src_cat or "unknown"
+        cat_id = "unknown_" + _slugify(src_name)
 
     # 2) Build a lookup of Digi-Key parameter text -> value
     params = {p.get("ParameterText"): p.get("ValueText") for p in prod.get("Parameters", []) if p.get("ParameterText")}

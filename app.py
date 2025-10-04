@@ -682,7 +682,21 @@ def catalog_home():
 def catalog_category(category_id):
     parts = _parts_in_category(category_id)
     cat_name = next((c["source_name"] for c in _categories_with_stock() if c["category_id"] == category_id), None)
-    return render_template("catalog/catalog_parts.html", category_id=category_id, category_name=cat_name, parts=parts)
+    # Determine whether we have a profile for this category. If not, the
+    # category is 'uncategorized' (no profile) and the UI should show a
+    # brief disclaimer explaining that these parts have no profile yet.
+    registry = globals().get("REGISTRY")
+    profile_exists = False
+    if registry and category_id in registry:
+        profile_exists = True
+
+    return render_template(
+        "catalog/catalog_parts.html",
+        category_id=category_id,
+        category_name=cat_name,
+        parts=parts,
+        profile_exists=profile_exists,
+    )
 
 @app.get("/DBreset")
 def DBreset():
