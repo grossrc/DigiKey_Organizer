@@ -12,4 +12,3 @@ __pycache__/Digikey_API_TEST.cpython-313.pyc
 scripts/db_smoke_test.py
 temp_db_test.py
 tools/render_check.py
-scripts/migrate_unknown_other.py
