@@ -290,6 +290,16 @@ A (free) DigiKey API is required for operating this program. While the Pi servic
 ## Getting your Credentials
 A Client_ID and Client_Secret are what's used by the DigiKey API to verify queries. To get these parameters from your DigiKey account, you must go to https://developer.digikey.com/ and create an organization/project/production app. The only specific API used in this program is "ProductInformation V4", so make sure this is what's selected when creating your production app. Once created, you should have credentials which can be copied over to your .env file. This file will be referenced by the program anytime your credentails are needed.
 
+## Part List Filter
+The filter in the top left corner of the list page allows users to filter the part number/description/attribute. This is useful to providing useful accounting of what's available and to quickly verify if a desired part is in stock. This is just a catch-all search where the list will display everything with some level of matching. To narrow the search further, type more attributes for a more refined view. The search is built with AND search capability, but can be adapted for OR searching if desired (you'd need to impliment this yourself in the code).
+Examples
+- Query: "0402 20k"
+  - AND → only rows with both “0402” and “20k” (good for targeted filtering).
+  - OR → rows with either “0402” or “20k” (can be too many results).
+- Query: "led 3mm"
+  - AND → 3mm LEDs (likely desired).
+  - OR → all LEDs and all 3mm parts (noisy).
+
 
 
 [![Watch the video](https://img.youtube.com/vi/4L8dW_dunqc/hqdefault.jpg)](https://youtu.be/4L8dW_dunqc)

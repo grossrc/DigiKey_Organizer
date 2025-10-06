@@ -87,6 +87,17 @@
               {% set top_keys = keys[:4] %}
               {% set more_keys = keys[4:] %}
             {% endif %}
+            {# Build a flattened search string including mpn, manufacturer, description and attribute key/values #}
+            {% set _attr_kv = [] %}
+            {% for k, v in attrs.items() %}
+              {% if v is sequence and v is not string %}
+                {% set _ = _attr_kv.append(k ~ ' ' ~ (v|join(' '))) %}
+              {% else %}
+                {% set _ = _attr_kv.append(k ~ ' ' ~ (v|string)) %}
+              {% endif %}
+            {% endfor %}
+            {% set search_text = (p.mpn or '') ~ ' ' ~ (p.manufacturer or '') ~ ' ' ~ (p.description or p.detailed or '') ~ ' ' ~ (_attr_kv|join(' ')) %}
+
             <tr class="part-row"
                 data-part='{{ {
                   "part_id": p.part_id,
@@ -100,7 +111,8 @@
                 } | tojson | e }}'
                 data-mpn="{{ p.mpn|e }}"
                 data-mfr="{{ (p.manufacturer or '')|e }}"
-                data-attrs="{{ (p.attributes|tojson)|e }}">
+                data-attrs="{{ (p.attributes|tojson)|e }}"
+                data-search="{{ search_text|e }}">
 
               <td class="cell-img">
                 {% if p.image_url %}
