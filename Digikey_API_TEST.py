@@ -76,7 +76,10 @@ def get_access_token():
 
 def productdetails(product_number):
     token = get_access_token()
-    url = f"{DIGIKEY_BASE}/search/{quote(str(product_number))}/productdetails"
+    # Percent-encode the product number for use in the URL path segment.
+    # Important: encode the slash '/' as '%2F' by using safe='' so the API
+    # doesn't treat it as a path separator.
+    url = f"{DIGIKEY_BASE}/search/{quote(str(product_number), safe='')}/productdetails"
     headers = {
         "Authorization": f"Bearer {token}",
         "X-DIGIKEY-Client-Id": CLIENT_ID,
@@ -110,7 +113,7 @@ def call_DigiKey_API(part_number):
 
 def main():
     # Allow passing a part number on the command line for quick testing
-    MFR_PN = sys.argv[1] if len(sys.argv) > 1 else 'L1CU-FRD1000000000'
+    MFR_PN = sys.argv[1] if len(sys.argv) > 1 else '24AA00T-I/OT-ND'
     dk_json = call_DigiKey_API(MFR_PN)  # Call DigiKey API and return JSON
     if dk_json:
         print('\n---- DigiKey raw JSON (truncated pretty) -----')

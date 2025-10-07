@@ -78,7 +78,8 @@ def get_access_token():
 
 def productdetails(product_number):
     token = get_access_token()
-    url = f"{DIGIKEY_BASE}/search/{quote(str(product_number))}/productdetails"
+    # Percent-encode the product number so embedded '/' characters become '%2F'
+    url = f"{DIGIKEY_BASE}/search/{quote(str(product_number), safe='')}/productdetails"
     headers = {
         "Authorization": f"Bearer {token}",
         "X-DIGIKEY-Client-Id": CLIENT_ID,
