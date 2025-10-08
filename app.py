@@ -191,6 +191,8 @@ def _build_preview(dk_json: Dict[str, Any], scan_fields: Dict[str, Any]) -> Dict
         "category": {
             "id": decoded.get("category_id"),
             "name": decoded.get("category_source_name"),
+            "path": decoded.get("category_path"),
+            "path_names": decoded.get("category_path_names") or [],
         },
         "attributes": decoded.get("attributes") or {},
         "unknown_parameters": decoded.get("unknown_parameters") or {},

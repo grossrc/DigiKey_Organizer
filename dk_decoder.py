@@ -349,6 +349,24 @@ def category_name_path(category_obj):
     walk(category_obj or {})
     return out
 
+def category_name_path_dedup(category_obj):
+    """Return the list of category names (top->deepest) with consecutive duplicates removed.
+
+    Digi-Key API occasionally (rarely) echoes the same node twice when a merchandising
+    category and an internal category share the same label. Example incoming path:
+        Connectors, Interconnects -> Barrel Connectors -> Barrel Connectors -> Power Connectors
+    We want to normalize this to:
+        Connectors, Interconnects -> Barrel Connectors -> Power Connectors
+    Only *consecutive* duplicates are removed so that genuinely distinct reused names
+    at different depths (should that ever occur) are still represented.
+    """
+    raw = category_name_path(category_obj)
+    dedup = []
+    for name in raw:
+        if not dedup or dedup[-1] != name:
+            dedup.append(name)
+    return dedup
+
 def _prefer_rf_module_if_applicable(profile: Optional[dict],
                                     registry: Dict[str, dict],
                                     params_dict: Dict[str, str]) -> Optional[dict]:
@@ -523,9 +541,10 @@ def decode_product(raw_json: Dict[str, Any], registry: Dict[str, dict]) -> Dict[
     category_obj = prod.get("Category", {}) or {}
     profile = match_profile_by_source_category(registry, category_obj)
 
-    # Keep deepest name for reporting
-    path = category_name_path(category_obj)
-    src_cat = path[-1] if path else None
+    # Full (deduplicated) path for embedding in DB / downstream use
+    path_full = category_name_path_dedup(category_obj)
+    src_cat = path_full[-1] if path_full else None
+    path_str = " \u203a ".join(path_full) if path_full else None  # U+203A single right-pointing angle quote
 
     # Build params NOW so we can run the RF module tie-break
     params = {p.get("ParameterText"): p.get("ValueText")
@@ -584,6 +603,9 @@ def decode_product(raw_json: Dict[str, Any], registry: Dict[str, dict]) -> Dict[
     return {
         "category_id": cat_id,
         "category_source_name": src_cat,
+        # New: full hierarchical path (list + pretty string) for richer querying
+        "category_path_names": path_full,
+        "category_path": path_str,
         "attributes": attrs,
         "unknown_parameters": unknown
     }
