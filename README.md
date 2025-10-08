@@ -272,6 +272,11 @@ sudo systemctl reload nginx
 
 ## (optional) Reformat the DB
 Sometimes as new code updates/changes the older part entries are left behind. Newly scanned parts will reflect changes in how they're indexed, processed, an referenced. However, older part persist in the DB in the same way that they were originally entered in- often long before recent updates. To solve this issue, a roformat file was created to allow all parts to be re-indexed using current schemes. Data like bin location, quantity, and movements are preserved in this process since these persist through code changes. Other parameters like attributes and categorization might change depending on how the new code handles them.
+```
+# Dry run then apply
+python reformat.py --dry-run
+python reformat.py --cleanup-unused-categories
+```
 
 # Troubleshooting
 - If the program boots up, but you're having trouble scanning in parts, this is probably an issue with your API credentials. I included a Digikey_API_TEST.py script which you can use to input your credentials (or allow them to be pulled directly from the .env file) and ensure you get a proper return. If not- this is an issue with DigiKey API or your credentials.
