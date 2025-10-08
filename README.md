@@ -16,7 +16,7 @@ A core aspect of the program is the ability to access this inventory in a way th
 
 # Checkout
 
-Parts can be checked out out manually or through a guided process. During checkout, the dowloaded QR code is taken over to the storage hub and scanned. The program identifies each part and guides you to where it's located. This streamlines the process of getting your desired parts, and encourages reuse when possible.
+Parts can be checked out out manually or through a guided process. During checkout, the downloaded QR code is taken over to the storage hub and scanned. The program identifies each part and guides you to where it's located. This streamlines the process of getting your desired parts, and encourages reuse when possible.
 
 ![alt text](checkout.gif)
 
