@@ -269,6 +269,15 @@ pip install -r requirements.txt
 sudo systemctl restart catalog
 sudo systemctl reload nginx
 ```
+
+## (optional) Reformat the DB
+Sometimes as new code updates/changes the older part entries are left behind. Newly scanned parts will reflect changes in how they're indexed, processed, an referenced. However, older part persist in the DB in the same way that they were originally entered in- often long before recent updates. To solve this issue, a roformat file was created to allow all parts to be re-indexed using current schemes. Data like bin location, quantity, and movements are preserved in this process since these persist through code changes. Other parameters like attributes and categorization might change depending on how the new code handles them.
+```
+# Dry run then apply
+python reformat.py --dry-run
+python reformat.py --cleanup-unused-categories
+```
+
 # Troubleshooting
 - If the program boots up, but you're having trouble scanning in parts, this is probably an issue with your API credentials. I included a Digikey_API_TEST.py script which you can use to input your credentials (or allow them to be pulled directly from the .env file) and ensure you get a proper return. If not- this is an issue with DigiKey API or your credentials.
 - If the program boots up, but you cannot access lab-parts.local/catalog, this might mean that your database isn't connected properly. Make sure you didn't accidently change any of the default .env variables for the DB. If you did, make sure that they line up. Some devices might also fail to resolve the mDNS .local address. Make sure to try this on a few devices (not mobile) first.
@@ -289,6 +298,22 @@ A (free) DigiKey API is required for operating this program. While the Pi servic
 
 ## Getting your Credentials
 A Client_ID and Client_Secret are what's used by the DigiKey API to verify queries. To get these parameters from your DigiKey account, you must go to https://developer.digikey.com/ and create an organization/project/production app. The only specific API used in this program is "ProductInformation V4", so make sure this is what's selected when creating your production app. Once created, you should have credentials which can be copied over to your .env file. This file will be referenced by the program anytime your credentails are needed.
+
+## Part List Filter
+The filter in the top left corner of the list page allows users to filter the part number/description/attribute. This is useful to providing useful accounting of what's available and to quickly verify if a desired part is in stock. This is just a catch-all search where the list will display everything with some level of matching. To narrow the search further, type more attributes for a more refined view. The search is built with AND search capability, but can be adapted for OR searching if desired (you'd need to impliment this yourself in the code).
+Examples
+- Query: "0402 20k"
+  - AND → only rows with both “0402” and “20k” (good for targeted filtering).
+  - OR → rows with either “0402” or “20k” (can be too many results).
+- Query: "led 3mm"
+  - AND → 3mm LEDs (likely desired).
+  - OR → all LEDs and all 3mm parts (noisy).
+
+
+# Updates
+## (2025-10-08)
+Solved some categorization issues with duplicated or changing categories for parts whose .yaml file is not yet created. Also added `reformat.py`, a maintenance script that re-indexes all existing parts from their stored `raw_vendor_json` using the current decoder/profile logic, updating categories and attributes in-place while preserving part IDs, creation timestamps, and inventory history. Run it with `--dry-run` first to preview changes before applying them.
+
 
 
 

@@ -6,6 +6,15 @@
   </div>
   <h1 class="page-title">{{ category_name or category_id }}</h1>
 
+  {% if profile_exists is defined and not profile_exists %}
+    <div class="panel note">
+      <strong>Note:</strong> This category does not have a parsing profile yet. Parts in this
+      category were matched from the raw DigiKey lookup and may be missing
+      extracted attributes. If you intend to reference this category often, consider creating a profile to improve extraction and
+      classification. Reformat the database afterwards to reflect the change.
+    </div>
+  {% endif %}
+
   <div class="layout">
     <aside class="sidebar">
       <div class="panel">
@@ -78,6 +87,17 @@
               {% set top_keys = keys[:4] %}
               {% set more_keys = keys[4:] %}
             {% endif %}
+            {# Build a flattened search string including mpn, manufacturer, description and attribute key/values #}
+            {% set _attr_kv = [] %}
+            {% for k, v in attrs.items() %}
+              {% if v is sequence and v is not string %}
+                {% set _ = _attr_kv.append(k ~ ' ' ~ (v|join(' '))) %}
+              {% else %}
+                {% set _ = _attr_kv.append(k ~ ' ' ~ (v|string)) %}
+              {% endif %}
+            {% endfor %}
+            {% set search_text = (p.mpn or '') ~ ' ' ~ (p.manufacturer or '') ~ ' ' ~ (p.description or p.detailed or '') ~ ' ' ~ (_attr_kv|join(' ')) %}
+
             <tr class="part-row"
                 data-part='{{ {
                   "part_id": p.part_id,
@@ -91,7 +111,8 @@
                 } | tojson | e }}'
                 data-mpn="{{ p.mpn|e }}"
                 data-mfr="{{ (p.manufacturer or '')|e }}"
-                data-attrs="{{ (p.attributes|tojson)|e }}">
+                data-attrs="{{ (p.attributes|tojson)|e }}"
+                data-search="{{ search_text|e }}">
 
               <td class="cell-img">
                 {% if p.image_url %}

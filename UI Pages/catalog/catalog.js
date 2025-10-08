@@ -5,15 +5,31 @@
   const rows = table ? Array.from(table.querySelectorAll('tbody tr.part-row')) : [];
   const norm = s => (s || '').toString().toLowerCase();
 
-  function match(row, needle){
+  /**
+   * Match uses a flattened `data-search` attribute (mpn, manufacturer, description,
+   * and attribute key/values joined). Supports multiple tokens (space-separated)
+   * and requires all tokens to be present (AND semantics). If data-search is
+   * missing, falls back to checking mpn/mfr/attrs fields.
+   */
+  function match(row, rawNeedle){
+    if (!rawNeedle) return true;
+    const needle = norm(rawNeedle.trim());
     if (!needle) return true;
-    const mpn = norm(row.dataset.mpn);
-    const mfr = norm(row.dataset.mfr);
-    const attrs = norm(row.dataset.attrs);
-    return mpn.includes(needle) || mfr.includes(needle) || attrs.includes(needle);
+
+    const tokens = needle.split(/\s+/).filter(Boolean);
+    const searchField = norm(row.dataset.search || '');
+    const mpn = norm(row.dataset.mpn || '');
+    const mfr = norm(row.dataset.mfr || '');
+    const attrs = norm(row.dataset.attrs || '');
+
+    return tokens.every(t => {
+      // Prefer the flattened searchField; but still allow matching against mpn/mfr/attrs
+      return searchField.includes(t) || mpn.includes(t) || mfr.includes(t) || attrs.includes(t);
+    });
   }
+
   function applyFilter() {
-    const needle = norm(q?.value?.trim());
+    const needle = q?.value || '';
     rows.forEach(r => { r.style.display = match(r, needle) ? '' : 'none'; });
   }
   if (q) q.addEventListener('input', applyFilter);

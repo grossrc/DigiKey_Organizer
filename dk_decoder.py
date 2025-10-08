@@ -85,14 +85,128 @@ def parse_number_with_prefix(s: str) -> Optional[float]:
     Parses strings like "0.022 µF", "2.5A", "1kΩ" into a float in base units.
     Unit suffix is ignored; only SI prefix is applied.
     """
-    s = s.strip()
-    m = re.match(r'^\s*([+-]?\d+(?:\.\d+)?)\s*([kKMGMµunpf]?)', s)
+    s = (s or '').strip()
+    # Extract the leading numeric value first
+    m = re.match(r'^\s*([+-]?\d+(?:\.\d+)?)', s)
     if not m:
         return None
-    val, prefix = m.group(1), m.group(2)
-    base = _SI.get(prefix, 1.0)
+    val = m.group(1)
     n = _num(val)
-    return None if n is None else n * base
+    if n is None:
+        return None
+
+    # Inspect the remainder of the string for SI prefix hints. Many vendors
+    # write things like '100 mOhm', '100mΩ', '100 milliohm' or '0.1 Ohm'.
+    # We look for a symbol or word that indicates the SI prefix and apply it.
+    rest = s[m.end():].strip().lower()
+
+    # Quick symbol detection (single-letter or unicode mu). Prefer the first
+    # meaningful prefix found in the remainder.
+    if rest:
+        # Common single-letter prefixes (case-insensitive) and unicode mu
+        for sym, mult in (('k', 1e3), ('m', 1e-3), ('u', 1e-6), ('µ', 1e-6),
+                          ('n', 1e-9), ('p', 1e-12), ('f', 1e-15), ('g', 1e9), ('t', 1e12)):
+            # Match symbol either as standalone token or as the first letter of a unit
+            # e.g., 'mΩ', 'mohm', ' milliohm', ' mOhm'
+            if re.search(r'(^|[^a-z0-9])' + re.escape(sym) + r'(?=[^a-z0-9]|[a-z]|$)', rest, flags=re.I):
+                return n * mult
+
+        # Full-word prefixes (e.g., 'milli', 'micro')
+        if re.search(r'\bmilli|\bmilliohm|\bmilliohms\b', rest):
+            return n * 1e-3
+        if re.search(r'\bmicro|\bmicroohm|\bmicroohms\b', rest) or '\u00b5' in rest:
+            return n * 1e-6
+        if re.search(r'\bnano', rest):
+            return n * 1e-9
+        if re.search(r'\bpico', rest):
+            return n * 1e-12
+
+    # No prefix detected — return the numeric value unchanged
+    return n
+
+
+def parse_number_with_unit(s: str) -> Optional[Tuple[float, Optional[str]]]:
+    """
+    Parse a string into (numeric_value_in_base_units, normalized_unit_base) where
+    normalized_unit_base is a canonical unit name such as 'ohm', 'a', 'v', 'f', 'w', 'hz', 'ah'
+    or None if no unit could be detected. This is conservative: it will not coerce
+    between incompatible units (e.g., 'mAh' -> 'Ah' is detected, but it's considered
+    distinct from 'A').
+    """
+    if not s:
+        return None
+    s = s.strip()
+    # Extract leading number
+    m = re.match(r'^\s*([+-]?\d+(?:\.\d+)?)(.*)$', s)
+    if not m:
+        return None
+    val_str = m.group(1)
+    rest = (m.group(2) or '').strip()
+    n = _num(val_str)
+    if n is None:
+        return None
+
+    rest_l = rest.lower()
+
+    # Determine canonical unit base from the remainder
+    unit = None
+
+    # OHM family (include the literal Greek capital omega 'Ω')
+    if re.search(r'ohm|Ω|omega|mohm|milliohm', rest_l, flags=re.I):
+        unit = 'ohm'
+    # AMP / CURRENT
+    elif re.search(r'\bma\b|milliamp|milliampere|\bmilli amp\b|\bamp\b|\bamperes?\b|\ba\b', rest_l, flags=re.I):
+        # Careful: catch 'mah' (capacity) separately below
+        if 'mah' in rest_l or re.search(r'\bmah\b', rest_l):
+            unit = 'ah'  # capacity (Ah), distinct from current (A)
+        else:
+            unit = 'a'
+    elif re.search(r'\bah\b|milliamp-hour|milliamphour|amp-hour', rest_l):
+        unit = 'ah'
+    # VOLT
+    elif re.search(r'\bv\b|volt|volts', rest_l):
+        unit = 'v'
+    # FARAD / CAPACITANCE
+    elif re.search(r'farad|f\b|f\s|microfarad|nf|pf|uf|\buf\b|\bmu f\b', rest_l, flags=re.I):
+        unit = 'f'
+    # WATT
+    elif re.search(r'\bw\b|watt', rest_l):
+        unit = 'w'
+    # HERTZ
+    elif re.search(r'hz|khz|mhz|ghz', rest_l, flags=re.I):
+        unit = 'hz'
+    else:
+        # Try to infer from short unit tokens (single-letter or prefixed letter)
+        # e.g., 'mohm', 'mΩ', 'mA', 'mAh'
+        if re.search(r'\bm?ohm\b|mΩ', rest_l):
+            unit = 'ohm'
+        elif re.search(r'\bm?ah\b', rest_l, flags=re.I):
+            unit = 'ah'
+        elif re.search(r'\bm?a\b', rest_l, flags=re.I):
+            unit = 'a'
+
+    # Apply SI prefix if present in the rest. Look for e.g. 'm', 'k', 'M', 'µ', 'u', 'n', 'p'
+    multiplier = 1.0
+    # Search for a prefix token either immediately before unit or as standalone token
+    pref_m = re.search(r'\b(k|K|M|G|T|m|u|µ|n|p|f)\b', rest)
+    if not pref_m:
+        # also check single-char prefix attached to unit like 'mohm' or 'mΩ' or 'mA'
+        pref_m2 = re.match(r'^\s*([kKMGMmµunpfd])', rest_l)
+        if pref_m2:
+            pref = pref_m2.group(1)
+            multiplier = _SI.get(pref, 1.0)
+    else:
+        pref = pref_m.group(1)
+        multiplier = _SI.get(pref, 1.0)
+
+    # If rest contains explicit symbol like 'mΩ' where prefix is directly attached to unit
+    # attempt to capture it as well (e.g., 'mΩ' -> 'm')
+    m_sym = re.search(r'([kKMGMµunpf])\s*(?:ohm|Ω|a|v|f|hz)?', rest)
+    if m_sym:
+        multiplier = _SI.get(m_sym.group(1), multiplier)
+
+    value_in_base = n * multiplier
+    return (value_in_base, unit)
 
 def parse_range(s: str, inner_parser):
     """
@@ -156,26 +270,63 @@ def deepest_category_name(cat: Dict[str, Any]) -> Optional[str]:
 def match_profile_by_source_category(registry, category_obj):
     names = category_name_path(category_obj)
     names_lc = [n.lower() for n in names]
+    # Avoid very generic single-token matches (e.g., "capacitor(s)")
+    GENERIC_TOKENS = {
+        "capacitors", "capacitor", "resistors", "resistor",
+        "connectors", "connector", "inductors", "inductor",
+        "diodes", "diode", "led", "leds", "module", "modules",
+        "ic", "ics", "semiconductors",
+    }
 
     for prof in registry.values():
-        sc = [s.lower() for s in prof.get("source_categories", [])]
+        sc_list = prof.get("source_categories", []) or []
+        sc = [s.lower() for s in sc_list]
 
         # 1) exact (case-insensitive)
         if any(n in sc for n in names_lc):
             return prof
 
-        # 2) substring either way:
-        #    - profile string contained in any category path element
-        #    - OR category path element contained in profile string
-        if any(any(s in n or n in s for n in names_lc) for s in sc):
-            return prof
-
-        # 3) regex patterns
-        for pat in prof.get("source_category_patterns", []):
+        # 2) regex patterns (allow profiles to opt into precise matching)
+        for pat in prof.get("source_category_patterns", []) or []:
             rx = re.compile(pat, flags=re.I)
             if any(rx.search(n) for n in names):
                 return prof
+
+        # 3) safer substring / word-boundary matching
+        #    - require the matched token not be a highly-generic word like "capacitors"
+        #    - use word-boundary regex so we don't match tiny fragments
+        for s_orig in sc_list:
+            s = (s_orig or "").strip().lower()
+            if not s or s in GENERIC_TOKENS:
+                continue
+            for n in names:
+                n_l = (n or "").strip().lower()
+                if not n_l or n_l in GENERIC_TOKENS:
+                    continue
+                # word-boundary either way
+                if re.search(r"\b" + re.escape(s) + r"\b", n, flags=re.I) or re.search(r"\b" + re.escape(n_l) + r"\b", s, flags=re.I):
+                    return prof
+
     return None
+
+
+def _slugify(s: str) -> str:
+    """Create a filesystem/DB-safe slug from a category name.
+    Keeps lowercase letters, digits, and dashes. Replaces whitespace and
+    punctuation with dashes and collapses repeats. In the future, it would be ideal 
+    to make this a separate column flag in the DB, but this functionality is being
+    built out on an existing DB schema for now.
+    """
+    if not s:
+        return ""
+    # Lowercase
+    s2 = s.lower()
+    # Replace non-alphanumeric with dash
+    import re
+
+    s2 = re.sub(r"[^a-z0-9]+", "-", s2)
+    s2 = re.sub(r"-+", "-", s2).strip("-")
+    return s2 or "unknown"
 
 
 def first_present(d: Dict[str, str], keys) -> Optional[str]:
@@ -234,9 +385,42 @@ def normalize_value(canon_key: str, text: str) -> Optional[Any]:
     """
     t = text.strip()
 
-    # numeric with SI
+    # numeric with SI — use the more robust parser that returns (value, unit)
     if canon_key.endswith(("_f", "_ohm", "_v", "_a", "_w", "_hz")):
-        return parse_number_with_prefix(t)
+        parsed = parse_number_with_unit(t)
+        if not parsed:
+            return None
+        value, unit = parsed
+
+        # Map canon_key to expected base unit
+        expected = None
+        if canon_key.endswith("_ohm"):
+            expected = 'ohm'
+        elif canon_key.endswith("_f"):
+            expected = 'f'
+        elif canon_key.endswith("_v"):
+            expected = 'v'
+        elif canon_key.endswith("_a"):
+            expected = 'a'
+        elif canon_key.endswith("_w"):
+            expected = 'w'
+        elif canon_key.endswith("_hz"):
+            expected = 'hz'
+
+        # If we detected a unit, ensure it's compatible with the expected unit.
+        # Conservative approach: if unit is None (no unit text found), accept numeric value as-is.
+        if unit is None:
+            return value
+
+        if expected == unit:
+            return value
+
+        # If units are closely related (e.g., 'ohm' variants), allow
+        # 'ohm' synonyms have already been normalized to 'ohm' so this is covered.
+
+        # Mismatch (e.g., 'ah' vs 'a'): do not coerce automatically; return None
+        # so callers can decide handling or manual review can be triggered.
+        return None
 
     # ppm
     if canon_key.endswith("_ppm"):
@@ -351,7 +535,14 @@ def decode_product(raw_json: Dict[str, Any], registry: Dict[str, dict]) -> Dict[
     # Prefer rf_mcu_module over mcu/battery_charger when RF keys are present
     profile = _prefer_rf_module_if_applicable(profile, registry, params)
 
-    cat_id = profile["id"] if profile else "unknown_other"
+    if profile:
+        cat_id = profile["id"]
+    else:
+        # For unmatched categories, generate a deterministic id from the
+        # deepest source category name so different unknown categories do
+        # not all map to a single 'unknown_other' id (which causes clobbers).
+        src_name = src_cat or "unknown"
+        cat_id = "unknown_" + _slugify(src_name)
 
     # 2) Build a lookup of Digi-Key parameter text -> value
     params = {p.get("ParameterText"): p.get("ValueText") for p in prod.get("Parameters", []) if p.get("ParameterText")}
