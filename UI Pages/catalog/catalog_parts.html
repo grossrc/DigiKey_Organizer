@@ -1,10 +1,22 @@
 {% extends "catalog/catalog_base.html" %}
 {% block content %}
   <div class="crumbs">
-    <a href="{{ url_for('catalog_home') }}">All Categories</a> ›
-    <span>{{ category_name or category_id }}</span>
+    <a href="{{ url_for('catalog_home') }}">All Categories</a>
+    {% if category_path_names and category_path_names|length %}
+      {% for seg in category_path_names %}
+        › {% if loop.last %}<span>{{ seg }}</span>{% else %}<span class="crumb-ancestor">{{ seg }}</span>{% endif %}
+      {% endfor %}
+    {% else %}
+      › <span>{{ category_name or category_id }}</span>
+    {% endif %}
   </div>
-  <h1 class="page-title">{{ category_name or category_id }}</h1>
+  <h1 class="page-title">
+    {% if category_path_names and category_path_names|length %}
+      {{ category_path_names[-1] }}
+    {% else %}
+      {{ category_name or category_id }}
+    {% endif %}
+  </h1>
 
   {% if profile_exists is defined and not profile_exists %}
     <div class="panel note">

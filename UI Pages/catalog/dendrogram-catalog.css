@@ -1,0 +1,98 @@
+/* New Horizontal Tree & Clean UI */
+
+/* Hero */
+.catalog-hero {margin-bottom:20px}
+
+
+/* Common categories (large cards) */
+.common-categories {margin-bottom:34px}
+.common-inner {background:linear-gradient(135deg,#e1ecf9,#bbcae0);border:1px solid var(--border);border-radius:18px;padding:22px 24px;box-shadow:0 4px 16px -6px rgba(0,0,0,.09)}
+.common-label {font-weight:700;font-size:.78rem;text-transform:uppercase;letter-spacing:.55px;color:var(--muted);margin:0 0 14px}
+.common-grid {display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.common-card {text-align:left;background:linear-gradient(135deg,#ffffff,#f6f9ff);border:1px solid var(--border);border-radius:18px;padding:22px 22px 18px;cursor:pointer;display:flex;flex-direction:column;gap:6px;transition:.2s;box-shadow:0 4px 14px -6px rgba(0,0,0,.08)}
+.common-card:hover {border-color:var(--brand);box-shadow:0 8px 22px -10px rgba(30,99,255,.45);transform:translateY(-3px)}
+.cc-title {font-weight:700;font-size:1rem}
+.cc-sub {color:var(--muted);font-size:.8rem;font-weight:500;letter-spacing:.3px}
+
+/* (scheme selection removed) */
+
+/* Removed separate tree header – navigation via node clicks */
+
+/* Horizontal tree */
+.tree-wrapper {position:relative;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:30px;overflow:auto;min-height:520px;box-shadow:0 3px 10px rgba(0,0,0,.06)}
+.tree-columns {display:flex;align-items:stretch;gap:48px;min-height:300px;position:relative}
+.tree-column {display:flex;flex-direction:column;gap:14px;min-width:240px;position:relative;padding:4px 0}
+.tree-column:not(:last-child):after {content:"";position:absolute;top:0;right:-24px;bottom:0;width:1px;background:linear-gradient(#d9e3ef,#edf3f9)}
+.tree-col-title {font-size:.7rem;font-weight:700;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;padding:2px 4px 6px}
+.tree-nodes {display:flex;flex-direction:column;gap:10px}
+
+/* Node cards */
+.tree-node {background:#fff;border:1.8px solid var(--border);border-radius:14px;padding:14px 14px 12px;cursor:pointer;position:relative;display:flex;flex-direction:column;gap:4px;transition:.18s;min-height:66px}
+.tree-node:hover {border-color:var(--brand);box-shadow:0 4px 14px -4px rgba(30,99,255,.35);transform:translateY(-3px)}
+/* Selection color logic: upstream (non-final) = lighter, final selected = dark */
+.tree-node.selected {border-color:#4b89ff;background:linear-gradient(135deg,#e8f2ff,#d6e9ff);color:#0b1220;box-shadow:0 2px 8px -2px rgba(30,99,255,.25)}
+.tree-node.selected.final {background:linear-gradient(135deg,#1e63ff,#4285f4);color:#fff;border-color:#1e63ff;box-shadow:0 4px 18px -4px rgba(30,99,255,.55)}
+/* Nodes that directly map to a list page (have terminating parts) */
+.tree-node.terminates {background:linear-gradient(135deg,#1e63ff,#4285f4);color:#fff;border-color:#1e63ff;box-shadow:0 4px 18px -4px rgba(30,99,255,.45)}
+.tree-node.terminates.selected {box-shadow:0 4px 20px -4px rgba(30,99,255,.65)}
+/* Search bar */
+.dendro-search-bar {display:flex;gap:14px;align-items:center;margin:18px 0 24px;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 2px 8px -2px rgba(0,0,0,.05)}
+.dendro-search-bar input {flex:0 1 260px;max-width:300px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:.85rem}
+.dendro-search-bar .search-controls {display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dendro-search-bar #dendro-reset {margin-left:auto}
+.dendro-search-bar button {background:#ffffff;border:1px solid var(--border);border-radius:12px;padding:10px 18px;cursor:pointer;font-weight:600;min-width:54px;min-height:46px;font-size:.95rem;line-height:1;display:flex;justify-content:center;align-items:center;transition:.18s;box-shadow:0 2px 6px -2px rgba(0,0,0,.08)}
+.dendro-search-bar button.nav {background:linear-gradient(135deg,#f4f8ff,#e5eefc)}
+.dendro-search-bar button.clear {font-size:1.2rem;min-width:50px}
+.dendro-search-bar button.reset.danger {background:linear-gradient(135deg,#ff6b6b,#ff3b3b);color:#fff;border:1px solid #ff4747;min-width:74px}
+.dendro-search-bar button.reset.danger:disabled {background:#ffb6b6;border-color:#f3a2a2;color:#fff;opacity:.45}
+.dendro-search-bar button.reset.danger:not(:disabled):hover {background:linear-gradient(135deg,#ff4040,#ff2222);border-color:#ff2222;box-shadow:0 4px 14px -4px rgba(255,70,70,.45)}
+.dendro-search-bar button:disabled {opacity:.35;cursor:default;box-shadow:none}
+.dendro-search-bar button:not(:disabled):hover {background:var(--brand);color:#fff;border-color:var(--brand);transform:translateY(-2px);box-shadow:0 6px 16px -6px rgba(30,99,255,.55)}
+.match-count {font-size:.66rem;font-weight:700;color:var(--brand);background:#e8f1ff;padding:4px 8px;border-radius:100px;min-width:54px;text-align:center}
+.sr-only {position:absolute;left:-9999px;height:1px;width:1px;overflow:hidden}
+.tree-node.match-focus {outline:3px solid #ffb347;position:relative}
+.tree-node.match-focus:after {content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 0 4px rgba(255,179,71,.35);pointer-events:none}
+/* No complete disable – allow upstream re-navigation */
+.tree-node.disabled {opacity:.55;filter:grayscale(.1)}
+/* Final nodes no longer green; inherit selected styles. Deepest selected already dark blue. */
+.tree-node.final { /* inherits base or selected styling */ position:relative; }
+.tree-node.final.deepest { /* explicit just in case order issues */ background:linear-gradient(135deg,#1e63ff,#4285f4);color:#fff;border-color:#1e63ff;box-shadow:0 4px 18px -4px rgba(30,99,255,.55)}
+.node-title {font-weight:600;font-size:.95rem;line-height:1.15}
+.node-meta {font-size:.7rem;letter-spacing:.5px;font-weight:600;opacity:.65;text-transform:uppercase}
+
+/* Connections */
+.tree-connections {position:absolute;inset:0;pointer-events:none;overflow:visible}
+.tree-edge {stroke:#c9d6e4;stroke-width:2;fill:none;stroke-linecap:round;transition:stroke .25s}
+.tree-edge.active {stroke:var(--brand);stroke-width:3}
+
+/* Final jump panel */
+/* Removed separate final jump panel – final nodes are directly actionable */
+
+/* Scroll polish */
+.tree-wrapper::-webkit-scrollbar {height:10px}
+.tree-wrapper::-webkit-scrollbar-track {background:#f0f4f9;border-radius:100px}
+.tree-wrapper::-webkit-scrollbar-thumb {background:#d0dae5;border-radius:100px}
+.tree-wrapper::-webkit-scrollbar-thumb:hover {background:#b9c5d3}
+
+/* Responsive */
+@media (max-width:900px){
+  .tree-columns {gap:36px}
+  .tree-column {min-width:200px}
+}
+@media (max-width:680px){
+  .catalog-hero {text-align:center}
+  .common-grid {grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+  .scheme-cards {grid-template-columns:1fr}
+  .tree-columns {flex-direction:column;gap:34px}
+  .tree-column:not(:last-child):after {display:none}
+  .tree-wrapper {overflow:visible}
+  .tree-connections {display:none}
+}
+
+/* Fade / slide utility */
+.fade-in {animation:fadeIn .38s ease forwards}
+.slide-in-up {animation:slideInUp .45s cubic-bezier(.16,.84,.44,1) forwards}
+/* Suppress animation flicker for stable columns */
+.no-anim {animation:none !important;transition:none !important}
+@keyframes fadeIn {from{opacity:0} to{opacity:1}}
+@keyframes slideInUp {from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)}}

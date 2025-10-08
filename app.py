@@ -680,6 +680,11 @@ def catalog_home():
     cats = _categories_with_stock()
     return render_template("catalog/catalog_categories.html", categories=cats)
 
+@app.get("/catalog/dendrogram")
+def catalog_dendrogram():
+    """Serve the experimental dendrogram navigation UI."""
+    return render_template("catalog/dendrogram-catalog.html")
+
 @app.get("/catalog/<category_id>")
 def catalog_category(category_id):
     parts = _parts_in_category(category_id)
@@ -692,13 +697,167 @@ def catalog_category(category_id):
     if registry and category_id in registry:
         profile_exists = True
 
+    # Fetch a representative category path (if stored) for breadcrumb
+    cat_path = None
+    cat_path_names = None
+    with closing(get_conn()) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT category_path, category_path_names FROM public.parts WHERE category_id=%s AND category_path IS NOT NULL LIMIT 1",
+                (category_id,),
+            )
+            row = cur.fetchone()
+            if row:
+                cat_path, cat_path_names = row[0], row[1]
+
     return render_template(
         "catalog/catalog_parts.html",
         category_id=category_id,
         category_name=cat_name,
+        category_path=cat_path,
+        category_path_names=cat_path_names or [],
         parts=parts,
         profile_exists=profile_exists,
     )
+
+@app.get("/api/category_nodes")
+def api_category_nodes():
+    """Return hierarchical category nodes for dendrogram navigation.
+
+    Query params:
+      depth: integer depth (0-based)
+      prefix: repeated parameter specifying each ancestor segment (order matters)
+
+    Response JSON:
+      { ok: true, nodes: [
+           { name, parts, stock, final, category_id? }
+        ] }
+    """
+    try:
+        depth = int(request.args.get("depth", 0))
+        prefix = request.args.getlist("prefix")  # list of ancestor names
+    except Exception:
+        return jsonify({"ok": False, "error": "invalid params"}), 400
+
+    # Fetch part rows with path + qty (available) once per request.
+    rows = []
+    with closing(get_conn()) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT p.part_id, p.category_id, p.category_path_names, COALESCE(av.qty_on_hand,0) AS qty
+                  FROM public.parts p
+                  LEFT JOIN public.v_inventory_available av ON av.part_id = p.part_id
+                  WHERE p.category_path_names IS NOT NULL
+                """
+            )
+            for part_id, cat_id, path_names, qty in cur.fetchall():
+                rows.append((part_id, cat_id, path_names, int(qty or 0)))
+
+    # Aggregate child nodes at requested depth under prefix
+    from collections import defaultdict, Counter
+    node_parts = defaultdict(set)       # node_name -> set(part_id)
+    node_stock = defaultdict(int)       # node_name -> total qty
+    node_full_paths = defaultdict(list) # node_name -> list of full paths for parts in node (for final detection)
+    node_cat_ids_at_final = defaultdict(list)  # node_name -> list of category_ids where path ends exactly here
+    node_terminations = defaultdict(int)       # node_name -> count of parts whose path terminates here
+
+    plen = len(prefix)
+    for part_id, cat_id, path_names, qty in rows:
+        if not isinstance(path_names, (list, tuple)):
+            continue
+        # Ensure prefix matches path start
+        if plen and path_names[:plen] != prefix:
+            continue
+        if len(path_names) <= depth:  # no node at this depth
+            continue
+        node_name = path_names[depth]
+        node_parts[node_name].add(part_id)
+        node_stock[node_name] += qty
+        node_full_paths[node_name].append(path_names)
+        if len(path_names) == depth + 1:  # path terminates exactly at this node (category has its own list page)
+            node_cat_ids_at_final[node_name].append(cat_id)
+            node_terminations[node_name] += 1
+
+    nodes = []
+    for name in sorted(node_parts.keys()):
+        full_paths = node_full_paths[name]
+        # final if ALL paths for this node terminate here (no deeper) => every path length == depth+1
+        is_final = all(len(p) == depth + 1 for p in full_paths)
+        term_count = node_terminations.get(name, 0)
+        node_obj = {
+            "name": name,
+            "parts": len(node_parts[name]),          # distinct descendant parts
+            "stock": node_stock[name],               # total descendant stock
+            "final": is_final,                       # no deeper descendants
+            "terminates_here": term_count,           # number of parts whose path ends at this node
+        }
+        ids = node_cat_ids_at_final.get(name) or []
+        if ids:  # choose most common category id among terminating parts (even if not final)
+            cnt = Counter(ids)
+            node_obj["category_id"] = cnt.most_common(1)[0][0]
+        nodes.append(node_obj)
+
+    # Sort nodes by descending stock then parts
+    nodes.sort(key=lambda n: (-(n["stock"]), -(n["parts"]), n["name"].lower()))
+
+    return jsonify({"ok": True, "nodes": nodes, "depth": depth, "prefix": prefix})
+
+@app.get("/api/category_search")
+def api_category_search():
+    """Search full category paths for any segment containing the query substring (case-insensitive).
+
+    Query params:
+      q: search text (required, length >=1)
+
+    Returns: { ok: true, matches: [ { path: [...], parts, stock, category_id } ] }
+    """
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"ok": True, "matches": []})
+    pattern = f"%{q}%"
+    rows = []
+    with closing(get_conn()) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                WITH matched AS (
+                  SELECT p.category_path_names, p.part_id, p.category_id, COALESCE(av.qty_on_hand,0) AS qty
+                    FROM public.parts p
+                    LEFT JOIN public.v_inventory_available av ON av.part_id = p.part_id
+                   WHERE p.category_path_names IS NOT NULL
+                     AND EXISTS (
+                       SELECT 1 FROM jsonb_array_elements_text(p.category_path_names) AS seg
+                        WHERE seg ILIKE %s
+                     )
+                )
+                SELECT category_path_names, array_agg(category_id) AS category_ids,
+                       COUNT(DISTINCT part_id) AS parts, SUM(qty)::int AS stock
+                  FROM matched
+                 GROUP BY category_path_names
+                ORDER BY parts DESC, stock DESC, category_path_names::text
+                LIMIT 300
+                """,
+                (pattern,),
+            )
+            for path_names, category_ids, parts, stock in cur.fetchall():
+                rows.append((path_names, category_ids, int(parts), int(stock)))
+
+    # Build response picking a representative category_id for each terminating path (most common)
+    from collections import Counter
+    matches = []
+    for path_names, cat_ids, parts, stock in rows:
+        rep = None
+        if cat_ids:
+            cnt = Counter(cat_ids)
+            rep = cnt.most_common(1)[0][0]
+        matches.append({
+            "path": path_names,
+            "parts": parts,
+            "stock": stock,
+            "category_id": rep,
+        })
+    return jsonify({"ok": True, "matches": matches, "query": q, "count": len(matches)})
 
 @app.get("/DBreset")
 def DBreset():
