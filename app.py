@@ -8,6 +8,8 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any, Dict
 import importlib
+import ssl
+from pathlib import Path
 
 # Third-party
 from flask import (
@@ -978,6 +980,16 @@ def dbreset_confirm():
 # Main
 # -------------------------------------------------------------------
 if __name__ == "__main__":
-    # Windows dev: http://localhost:5000
-    # Raspberry Pi (kiosk): Chromium at http://localhost:5000; camera works without HTTPS in localhost context.
-    app.run(host="0.0.0.0", port=5000, debug=(os.getenv("FLASK_DEBUG") == "1"))
+    cert_file = Path("cert.pem")
+    key_file = Path("key.pem")
+
+    if cert_file.exists() and key_file.exists():
+        # HTTPS mode with SSL certificates, required for camera access on remote devices
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(str(cert_file), str(key_file))
+        app.run(host="0.0.0.0", port=5443, debug=(os.getenv("FLASK_DEBUG") == "1"), ssl_context=context)
+    else:
+        # HTTP mode
+        # Windows dev: http://localhost:5000
+        # Raspberry Pi (kiosk): Chromium at http://localhost:5000; camera works without HTTPS in localhost context.
+        app.run(host="0.0.0.0", port=5000, debug=(os.getenv("FLASK_DEBUG") == "1"))

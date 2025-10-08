@@ -23,6 +23,23 @@ Parts can be checked out out manually or through a guided process. During checko
 ### Notes:
 My lab specifically uses DigiKey parts, so as of now this program only works with those parts and the DigiKey associated DataMatrix code/API. However, I know many labs- especially larger ones- use other wholesalers like Mouser, RS Components, etc. so this would be a good future contribution to the project. As far as I know, you're still able to input the MFR_part_# from other sites into the system, but it will be referenced through DigiKey's API. If the part doesn't exist in the DigiKey system, it's handling is not garanteed through the DB (give it a shot - I'm curious).
 
+## Mobile Device Support
+Some web cameras can't focus close enough to read the barcode. A workaround for this is to use a phone for scanning. To do this the website has to be served over https.
+
+### Setup https
+The application automatically detects SSL certificates and enables HTTPS for mobile camera support:
+
+```bash
+# Generate self-signed certificate (development only)
+openssl req -x509 -newkey rsa:2048 -nodes -out cert.pem -keyout key.pem -days 365 \
+  -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
+```
+
+- **With certificates**: Runs on `https://[your-server-ip]:5443` with mobile camera support
+- **Without certificates**: Runs on `http://[your-server-ip]:5000` (localhost only)
+
+If there are a `cert.pem` and `key.pem` in root folder the server will automatically start with https support.
+
 ## Project Requirements
 - Raspberry Pi4 or Pi5
 - 7" Pi Touchscreen
