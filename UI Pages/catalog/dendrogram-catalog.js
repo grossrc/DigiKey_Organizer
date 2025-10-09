@@ -78,8 +78,7 @@ class TreeCatalog {
         if(this.path[d] && this.path[d] !== node.name) div.classList.add('disabled');
         div.dataset.name = node.name;
         div.dataset.depth = d;
-        const listBadge = node.terminates_here ? ` • ${node.terminates_here} direct` : '';
-        div.innerHTML = `<div class="node-title">${node.name}</div><div class="node-meta">${node.parts} parts • ${node.stock} in stock${listBadge}${node.final? ' • final':''}</div>`;
+        div.innerHTML = `<div class="node-title">${node.name}</div><div class="node-meta">${node.parts} parts</div>`;
         div.addEventListener('click',()=>this.handleNodeClick(node, d));
         nodesWrap.appendChild(div);
       });
@@ -166,7 +165,25 @@ class TreeCatalog {
       const resp = await fetch('/api/category_search?q='+encodeURIComponent(q));
       const data = await resp.json();
       if(!data.ok){throw new Error(data.error||'search failed');}
-      this.searchMatches = data.matches || [];
+      // Build matches for ALL segments that contain the query (parent and child),
+      // but collapse paths to the matched segment (no auto-expansion).
+      const ql = q.toLowerCase();
+      const seen = new Set();
+      const collapsed = [];
+      (data.matches||[]).forEach(m=>{
+        const path = Array.isArray(m.path)? m.path : [];
+        path.forEach((seg, idx)=>{
+          if(((seg||'').toLowerCase()).includes(ql)){
+            const prefix = path.slice(0, idx+1);
+            const key = prefix.join('>');
+            if(!seen.has(key)){
+              seen.add(key);
+              collapsed.push({ path: prefix, category_id: m.category_id });
+            }
+          }
+        });
+      });
+      this.searchMatches = collapsed;
       this.matchIndex = this.searchMatches.length? 0 : -1;
       this.updateSearchControls();
       if(this.matchIndex>=0){
@@ -205,8 +222,8 @@ class TreeCatalog {
       // set selection for this depth
       this.path[d] = path[d];
     }
-    // load lookahead after full selection if more depths possible
-    await this.loadDepth(path.length);
+  // Do not auto-open the next depth when navigating search matches;
+  // keep children hidden until user clicks to expand.
     this.render();
     // Highlight last node (deepest in path)
     this.highlightDeepest(path[path.length-1]);

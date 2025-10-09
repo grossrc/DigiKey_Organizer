@@ -253,10 +253,8 @@ http://lab-parts.local/catalog
 If this project is useful to you, and if it saves you money, please share the love at:
 https://www.buymeacoffee.com/ryonicle
 
-
-git pull
 # Updating the codebase
-The project occasionally evolves in ways that add **new columns** or otherwise change how data is stored. To keep your running instance healthy you now perform an **Update + Migrate + Re‑index** sequence. This preserves all part IDs, locations, and movement history while bringing old rows up to date with the latest decoder logic and schema.
+The project code will change periodically to fix bugs and make improvements. This section outlines how to simply update your system to the latest version. To keep your running instance healthy you perform an **Update + Migrate + Re‑index** sequence. This preserves all part IDs, locations, and movement history while bringing old rows up to date with the latest decoder logic and schema. The codebase is also brought up to the most recent version.
 
 SSH into the Pi (enable SSH first via raspi-config if needed):
 ```
@@ -273,7 +271,7 @@ pip install -r requirements.txt
 
 # 2. Apply any pending schema migrations (new columns / indexes)
 #    Each *.sql file in deploy/migrations is meant to be run exactly once.
-#    They are written with IF NOT EXISTS guards so re-running is harmless.
+#    However, they are written such that re-running should be harmless.
 for f in deploy/migrations/*.sql; do
   echo "Applying migration: $f"; \
   psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$f"; \

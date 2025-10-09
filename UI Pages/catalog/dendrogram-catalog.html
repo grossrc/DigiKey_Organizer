@@ -19,22 +19,20 @@
         <div class="common-inner">
           <div class="common-label">Common Categories</div>
           <div class="common-grid">
-            <button class="common-card" data-final="ceramic-caps" title="Ceramic Capacitors">
-              <div class="cc-title">Ceramic Capacitors</div>
-              <div class="cc-sub">31 parts • 634 in stock</div>
-            </button>
-            <button class="common-card" data-final="chip-resistors" title="Chip / SMD Resistors">
-              <div class="cc-title">Chip Resistors (SMD)</div>
-              <div class="cc-sub">32 parts • 2160 in stock</div>
-            </button>
-            <button class="common-card" data-final="inductors" title="Fixed Inductors">
-              <div class="cc-title">Fixed Inductors</div>
-              <div class="cc-sub">4 parts • 29 in stock</div>
-            </button>
-            <button class="common-card" data-final="mosfets" title="MOSFETs">
-              <div class="cc-title">MOSFETs</div>
-              <div class="cc-sub">2 parts • 15 in stock</div>
-            </button>
+            {% for c in common_categories %}
+              {% set has_parts = (c.parts or 0) > 0 and c.category_id %}
+              {% if has_parts %}
+                <a class="common-card" href="{{ url_for('catalog_category', category_id=c.category_id) }}" title="{{ c.title }}">
+                  <div class="cc-title">{{ c.title }}</div>
+                  <div class="cc-sub">{{ c.parts }} parts</div>
+                </a>
+              {% else %}
+                <div class="common-card disabled" title="{{ c.title }}">
+                  <div class="cc-title">{{ c.title }}</div>
+                  <div class="cc-sub zero">0 parts</div>
+                </div>
+              {% endif %}
+            {% endfor %}
           </div>
         </div>
       </section>

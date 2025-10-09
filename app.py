@@ -494,6 +494,110 @@ def _categories_with_stock():
         for r in rows
     ]
 
+def _get_category_id_by_name(name: str):
+    """Resolve a category_id by a human-readable name (case-insensitive).
+    Primary: public.categories.source_name
+    Fallback: public.parts.category_source_name
+    Returns category_id or None if not found.
+    """
+    if not name:
+        return None
+    with closing(get_conn()) as conn:
+        with conn.cursor() as cur:
+            # 1) Exact (case-insensitive) match in categories.source_name
+            cur.execute(
+                """
+                SELECT category_id
+                  FROM public.categories
+                 WHERE UPPER(source_name) = UPPER(%s)
+                 LIMIT 1
+                """,
+                (name,),
+            )
+            row = cur.fetchone()
+            if row:
+                return row[0]
+
+            # 2) Contains match in categories.source_name (prefer longer names)
+            cur.execute(
+                """
+                SELECT category_id
+                  FROM public.categories
+                 WHERE source_name ILIKE %s
+                 ORDER BY LENGTH(source_name) DESC
+                 LIMIT 1
+                """,
+                (f"%{name}%",),
+            )
+            row = cur.fetchone()
+            if row:
+                return row[0]
+
+            # 3) Exact match in parts.category_source_name
+            cur.execute(
+                """
+                SELECT category_id
+                  FROM public.parts
+                 WHERE UPPER(category_source_name) = UPPER(%s)
+                 LIMIT 1
+                """,
+                (name,),
+            )
+            row = cur.fetchone()
+            if row:
+                return row[0]
+
+            # 4) Contains match in parts.category_source_name
+            cur.execute(
+                """
+                SELECT category_id
+                  FROM public.parts
+                 WHERE category_source_name ILIKE %s
+                 GROUP BY category_id
+                 ORDER BY COUNT(*) DESC
+                 LIMIT 1
+                """,
+                (f"%{name}%",),
+            )
+            row = cur.fetchone()
+            return row[0] if row else None
+
+def _build_common_categories():
+    """Return the configured common categories with stock-aware part counts.
+
+    Output: list of { title, category_id, parts }
+    parts == number of distinct parts currently available (>0 on-hand).
+    """
+    # Desired display titles (de-duplicated)
+    desired = [
+        "Chip Resistor - Surface Mount",
+        "Ceramic Capacitors",
+        "Fixed Inductors",
+        "Single Diodes",
+        "Fixed Inductors",
+    ]
+    seen_titles = set()
+    titles = []
+    for t in desired:
+        if t not in seen_titles:
+            seen_titles.add(t)
+            titles.append(t)
+
+    # Map category_id -> parts with stock
+    stock_rows = _categories_with_stock()
+    parts_by_id = {r["category_id"]: r["part_count"] for r in stock_rows}
+
+    results = []
+    for title in titles:
+        cat_id = _get_category_id_by_name(title)
+        parts = parts_by_id.get(cat_id, 0) if cat_id else 0
+        results.append({
+            "title": title,
+            "category_id": cat_id,
+            "parts": parts,
+        })
+    return results
+
 def _parts_in_category(category_id: str):
     with closing(get_conn()) as conn:
         with conn.cursor() as cur:
@@ -683,7 +787,8 @@ def catalog_home():
 @app.get("/catalog/dendrogram")
 def catalog_dendrogram():
     """Serve the experimental dendrogram navigation UI."""
-    return render_template("catalog/dendrogram-catalog.html")
+    commons = _build_common_categories()
+    return render_template("catalog/dendrogram-catalog.html", common_categories=commons)
 
 @app.get("/catalog/<category_id>")
 def catalog_category(category_id):
