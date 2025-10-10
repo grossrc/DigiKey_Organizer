@@ -141,10 +141,19 @@ a:hover{text-decoration:underline}
 .icon-btn:hover{background:#f4f7fc}
 
 /* crumbs */
-.crumbs{color:var(--muted);margin-bottom:8px}
-.crumbs.with-back{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.btn-back{appearance:none;border:1px solid var(--border);background:#fff;color:var(--fg);padding:.5rem .9rem;border-radius:12px;font-weight:700;cursor:pointer;font-size:.95rem;box-shadow:0 1px 2px rgba(0,0,0,.04)}
-.btn-back:hover{background:#f4f7fc}
+.crumbs{color:var(--muted);margin-bottom:10px}
+.crumbs.with-back{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.btn-back{appearance:none;border:1px solid var(--border);background:#fff;color:var(--fg);padding:.6rem 1.05rem;border-radius:12px;font-weight:800;cursor:pointer;font-size:1.05rem;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+.btn-back:hover{background:#f4f7fc;transform:translateY(-1px)}
+.btn-back:active{transform:translateY(0)}
+
+/* Breadcrumb chips */
+.crumb-link{display:inline-flex;align-items:center;gap:6px;padding:.28rem .6rem;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--fg);font-weight:600}
+.crumb-link.home{background:linear-gradient(135deg,#f8fbff,#f3f7ff)}
+.crumb-link.crumb-ancestor{color:#334155}
+.crumb-link.current{background:linear-gradient(135deg,#e8f2ff,#dce9ff);border-color:#cddbf3}
+.crumb-link:hover{text-decoration:none;border-color:var(--brand);box-shadow:0 2px 8px -4px rgba(30,99,255,.25)}
+.crumb-sep{color:#9aa8b6;display:inline-block;margin:0 2px}
 
 /* Add breathing room below the NOTE panel on uncategorized pages */
 .panel.note{margin-bottom:12px}

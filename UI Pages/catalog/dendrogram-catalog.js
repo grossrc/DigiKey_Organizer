@@ -5,7 +5,9 @@ class TreeCatalog {
     this.columnsEl = document.getElementById('tree-columns');
     this.connectionsEl = document.getElementById('tree-connections');
     this.treeWrapper = document.getElementById('tree-wrapper');
-    this.cache = new Map(); // key: depth|prefix.join('>') -> nodes array
+  this.cache = new Map(); // in-memory cache: key: depth|prefix.join('>') -> nodes array
+  this.persistKeyPrefix = 'dendro_nodes_v1'; // bump version if response shape changes
+  this.cacheTTLms = 1000 * 60 * 30; // 30 minutes TTL
     // Search state
     this.searchInput = document.getElementById('dendro-search');
     this.btnPrev = document.getElementById('dendro-prev');
@@ -34,10 +36,37 @@ class TreeCatalog {
     this.btnNext && this.btnNext.addEventListener('click', ()=>this.cycleMatch(1));
     this.btnClear && this.btnClear.addEventListener('click', ()=>this.clearSearch());
     this.btnReset && this.btnReset.addEventListener('click', ()=>this.resetAll());
+
+    // Keyboard shortcuts: Esc clears search or resets; Left/Right cycles matches; Enter cycles forward
+    document.addEventListener('keydown', (e)=>{
+      const activeTag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
+      const typing = activeTag === 'input' || activeTag === 'textarea';
+
+      if(e.key === 'Escape'){
+        if(this.searchInput && this.searchInput.value.trim() !== ''){
+          this.clearSearch();
+          e.preventDefault();
+        } else if (this.path.length){
+          this.resetAll();
+          e.preventDefault();
+        }
+      }
+
+      if(typing) return; // don't hijack arrows/enter while typing in inputs
+
+      if(e.key === 'ArrowLeft'){
+        if(this.searchMatches.length){ this.cycleMatch(-1); e.preventDefault(); }
+      } else if(e.key === 'ArrowRight'){
+        if(this.searchMatches.length){ this.cycleMatch(1); e.preventDefault(); }
+      } else if(e.key === 'Enter'){
+        if(this.searchMatches.length){ this.cycleMatch(1); e.preventDefault(); }
+      }
+    });
   }
 
   // Build cache key
   _key(depth,prefix){return depth+'|'+prefix.join('>');}
+  _persistKey(depth,prefix){ return `${this.persistKeyPrefix}:${depth}:${encodeURIComponent(prefix.join('>'))}`; }
 
   async initFromURL(){
     try {
@@ -64,13 +93,33 @@ class TreeCatalog {
     const prefix = this.path.slice(0, depth); // ancestors
     const key = this._key(depth,prefix);
     if(!this.cache.has(key)){
-      const params = new URLSearchParams();
-      params.set('depth', depth);
-      prefix.forEach(p=>params.append('prefix', p));
-      const resp = await fetch('/api/category_nodes?'+params.toString());
-      const data = await resp.json();
-      if(!data.ok){ console.error('Load failed', data.error); return; }
-      this.cache.set(key, data.nodes);
+      // Try localStorage first
+      const pKey = this._persistKey(depth, prefix);
+      try{
+        const raw = localStorage.getItem(pKey);
+        if(raw){
+          const obj = JSON.parse(raw);
+          if(obj && obj.t && Array.isArray(obj.nodes)){
+            if(Date.now() - obj.t < this.cacheTTLms){
+              this.cache.set(key, obj.nodes);
+            } else {
+              localStorage.removeItem(pKey);
+            }
+          }
+        }
+      } catch(_){/* ignore storage errors */}
+
+      if(!this.cache.has(key)){
+        const params = new URLSearchParams();
+        params.set('depth', depth);
+        prefix.forEach(p=>params.append('prefix', p));
+        const resp = await fetch('/api/category_nodes?'+params.toString(), {cache:'no-store'});
+        const data = await resp.json();
+        if(!data.ok){ console.error('Load failed', data.error); return; }
+        this.cache.set(key, data.nodes);
+        // Persist with timestamp
+        try { localStorage.setItem(this._persistKey(depth, prefix), JSON.stringify({t:Date.now(), nodes:data.nodes})); } catch(_){}
+      }
     }
     this.render();
   }
@@ -268,6 +317,15 @@ class TreeCatalog {
     this.path = [];
     this.columnsEl.innerHTML='';
     this.cache.clear();
+    // Also clear persisted cache keys for safety (only our versioned namespace)
+    try{
+      const toDelete=[];
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(k && k.startsWith(this.persistKeyPrefix+':')) toDelete.push(k);
+      }
+      toDelete.forEach(k=>localStorage.removeItem(k));
+    }catch(_){/* ignore */}
     this.loadDepth(0);
     if(this.btnReset) this.btnReset.disabled = true;
   }

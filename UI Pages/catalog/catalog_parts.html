@@ -8,8 +8,11 @@
         {% set prefix = category_path_names[:loop.index] %}
         {% set qpath = prefix|join('>') %}
         <span class="crumb-sep">›</span>
-        <a class="crumb-link{% if not loop.last %} crumb-ancestor{% else %} current{% endif %}"
-           href="{{ url_for('catalog_dendrogram') }}?path={{ qpath | urlencode }}">{{ seg }}</a>
+        {% if not loop.last %}
+          <a class="crumb-link crumb-ancestor" href="{{ url_for('catalog_dendrogram') }}?path={{ qpath | urlencode }}">{{ seg }}</a>
+        {% else %}
+          <span class="crumb-link current">{{ seg }}</span>
+        {% endif %}
       {% endfor %}
     {% else %}
       <span class="crumb-sep">›</span> <span class="crumb-link current">{{ category_name or category_id }}</span>
