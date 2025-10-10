@@ -7,7 +7,7 @@ class TreeCatalog {
     this.treeWrapper = document.getElementById('tree-wrapper');
   this.cache = new Map(); // in-memory cache: key: depth|prefix.join('>') -> nodes array
   this.persistKeyPrefix = 'dendro_nodes_v1'; // bump version if response shape changes
-  this.cacheTTLms = 1000 * 60 * 30; // 30 minutes TTL
+  this.cacheTTLms = 1000 * 60 * 60 * 6; // 6 hours TTL
     // Search state
     this.searchInput = document.getElementById('dendro-search');
     this.btnPrev = document.getElementById('dendro-prev');

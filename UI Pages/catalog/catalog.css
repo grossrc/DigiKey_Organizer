@@ -147,13 +147,8 @@ a:hover{text-decoration:underline}
 .btn-back:hover{background:#f4f7fc;transform:translateY(-1px)}
 .btn-back:active{transform:translateY(0)}
 
-/* Breadcrumb chips */
-.crumb-link{display:inline-flex;align-items:center;gap:6px;padding:.28rem .6rem;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--fg);font-weight:600}
-.crumb-link.home{background:linear-gradient(135deg,#f8fbff,#f3f7ff)}
-.crumb-link.crumb-ancestor{color:#334155}
-.crumb-link.current{background:linear-gradient(135deg,#e8f2ff,#dce9ff);border-color:#cddbf3}
-.crumb-link:hover{text-decoration:none;border-color:var(--brand);box-shadow:0 2px 8px -4px rgba(30,99,255,.25)}
-.crumb-sep{color:#9aa8b6;display:inline-block;margin:0 2px}
+/* Breadcrumb separators */
+.crumb-sep{color:#9aa8b6;display:inline-block;margin:0 4px}
 
 /* Add breathing room below the NOTE panel on uncategorized pages */
 .panel.note{margin-bottom:12px}
