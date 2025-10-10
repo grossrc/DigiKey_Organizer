@@ -17,6 +17,8 @@ class TreeCatalog {
     this.matchIndex = -1;
     this.setupEvents();
     this.loadDepth(0); // initial root
+    // Expand from URL if provided (?path=A>B>C)
+    this.initFromURL();
   }
 
   setupEvents(){
@@ -36,6 +38,27 @@ class TreeCatalog {
 
   // Build cache key
   _key(depth,prefix){return depth+'|'+prefix.join('>');}
+
+  async initFromURL(){
+    try {
+      const params = new URLSearchParams(window.location.search||'');
+      const raw = params.get('path');
+      if(!raw) return;
+      const segs = String(raw).split('>').map(s=>s.trim()).filter(Boolean);
+      if(!segs.length) return;
+      this.path = [];
+      for(let d=0; d<segs.length; d++){
+        await this.loadDepth(d);
+        const nodes = this.getNodesAt(d);
+        const wanted = segs[d];
+        if(!nodes.some(n=>n.name===wanted)) break;
+        this.path[d] = wanted;
+      }
+      this.render();
+      if(this.path.length){ this.highlightDeepest(this.path[this.path.length-1]); }
+      this.updateSearchControls();
+    } catch(e){ console.warn('initFromURL failed', e); }
+  }
 
   async loadDepth(depth){
     const prefix = this.path.slice(0, depth); // ancestors

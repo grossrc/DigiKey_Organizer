@@ -142,6 +142,12 @@ a:hover{text-decoration:underline}
 
 /* crumbs */
 .crumbs{color:var(--muted);margin-bottom:8px}
+.crumbs.with-back{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.btn-back{appearance:none;border:1px solid var(--border);background:#fff;color:var(--fg);padding:.5rem .9rem;border-radius:12px;font-weight:700;cursor:pointer;font-size:.95rem;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.btn-back:hover{background:#f4f7fc}
+
+/* Add breathing room below the NOTE panel on uncategorized pages */
+.panel.note{margin-bottom:12px}
 
 /* Actions layout */
 .list-actions { margin-top: 12px; }

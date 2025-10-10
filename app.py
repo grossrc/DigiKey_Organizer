@@ -781,8 +781,8 @@ def api_available_parts():
 
 @app.get("/catalog")
 def catalog_home():
-    cats = _categories_with_stock()
-    return render_template("catalog/catalog_categories.html", categories=cats)
+    # Deprecated in favor of the dendrogram UI
+    return redirect(url_for('catalog_dendrogram'))
 
 @app.get("/catalog/dendrogram")
 def catalog_dendrogram():
