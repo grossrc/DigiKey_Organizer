@@ -7,6 +7,7 @@ import os
 from contextlib import closing
 from pathlib import Path
 from typing import Any, Dict
+from psycopg2.extras import Json
 import importlib
 
 # Third-party
@@ -598,90 +599,97 @@ def _build_common_categories():
         })
     return results
 
-def _parts_in_category(category_id: str):
+def _parts_in_category(category_id: str, path_names: list[str] | None = None):
     with closing(get_conn()) as conn:
         with conn.cursor() as cur:
             if _has_relation("movements"):
                 # ✅ Pre-aggregate per-bin first; then aggregate to bins JSON and totals
-                cur.execute(
-                    """
-                    WITH pos_qty AS (
-                        SELECT m.part_id,
-                               m.position_code,
-                               SUM(m.quantity_delta)::int AS qty
-                          FROM public.movements m
-                         WHERE m.position_code NOT LIKE 'OUT%%'
-                      GROUP BY m.part_id, m.position_code
-                        HAVING SUM(m.quantity_delta) > 0
-                    ),
-                    part_totals AS (
-                        SELECT part_id, SUM(qty)::int AS qty
-                          FROM pos_qty
-                      GROUP BY part_id
-                    )
-                    SELECT p.part_id,
-                           p.mpn,
-                           p.manufacturer,
-                           p.description,
-                           p.detailed_description,
-                           p.product_url,
-                           p.datasheet_url,
-                           p.image_url,
-                           p.attributes,
-                           pt.qty AS qty,
-                           json_agg(
-                             json_build_object('position', pq.position_code, 'qty', pq.qty)
-                             ORDER BY pq.qty DESC
-                           ) AS bin_list
-                      FROM public.parts p
-                      JOIN part_totals pt ON pt.part_id = p.part_id
-                      JOIN pos_qty pq     ON pq.part_id = p.part_id
-                     WHERE p.category_id = %s
-                  GROUP BY p.part_id, pt.qty
-                  ORDER BY UPPER(p.mpn)
-                    """,
-                    (category_id,),
-                )
+                                sql = (
+                                        """
+                                        WITH pos_qty AS (
+                                                SELECT m.part_id,
+                                                             m.position_code,
+                                                             SUM(m.quantity_delta)::int AS qty
+                                                    FROM public.movements m
+                                                 WHERE m.position_code NOT LIKE 'OUT%%'
+                                            GROUP BY m.part_id, m.position_code
+                                                HAVING SUM(m.quantity_delta) > 0
+                                        ),
+                                        part_totals AS (
+                                                SELECT part_id, SUM(qty)::int AS qty
+                                                    FROM pos_qty
+                                            GROUP BY part_id
+                                        )
+                                        SELECT p.part_id,
+                                                     p.mpn,
+                                                     p.manufacturer,
+                                                     p.description,
+                                                     p.detailed_description,
+                                                     p.product_url,
+                                                     p.datasheet_url,
+                                                     p.image_url,
+                                                     p.attributes,
+                                                     pt.qty AS qty,
+                                                     json_agg(
+                                                         json_build_object('position', pq.position_code, 'qty', pq.qty)
+                                                         ORDER BY pq.qty DESC
+                                                     ) AS bin_list
+                                            FROM public.parts p
+                                            JOIN part_totals pt ON pt.part_id = p.part_id
+                                            JOIN pos_qty pq     ON pq.part_id = p.part_id
+                                         WHERE p.category_id = %s
+                                        """
+                                )
+                                params = [category_id]
+                                if path_names:
+                                        sql += " AND p.category_path_names = %s"
+                                        params.append(Json(path_names))
+                                sql += " GROUP BY p.part_id, pt.qty ORDER BY UPPER(p.mpn)"
+                                cur.execute(sql, params)
             elif _has_relation("v_inventory_available"):
-                # (unchanged) view-based path
-                cur.execute(
-                    """
-                    SELECT p.part_id, p.mpn, p.manufacturer, p.description, p.detailed_description,
-                           p.product_url, p.datasheet_url, p.image_url, p.attributes,
-                           SUM(v.qty_on_hand)::int AS qty,
-                           json_agg(
-                             json_build_object('position', v.position_code, 'qty', v.qty_on_hand)
-                             ORDER BY v.qty_on_hand DESC
-                           ) AS bin_list
-                      FROM public.parts p
-                      JOIN public.v_inventory_available v ON v.part_id = p.part_id
-                     WHERE p.category_id = %s
-                  GROUP BY p.part_id
-                    HAVING SUM(v.qty_on_hand) > 0
-                  ORDER BY UPPER(p.mpn)
-                    """,
-                    (category_id,),
-                )
+                                # view-based path
+                                sql = (
+                                        """
+                                        SELECT p.part_id, p.mpn, p.manufacturer, p.description, p.detailed_description,
+                                                     p.product_url, p.datasheet_url, p.image_url, p.attributes,
+                                                     SUM(v.qty_on_hand)::int AS qty,
+                                                     json_agg(
+                                                         json_build_object('position', v.position_code, 'qty', v.qty_on_hand)
+                                                         ORDER BY v.qty_on_hand DESC
+                                                     ) AS bin_list
+                                            FROM public.parts p
+                                            JOIN public.v_inventory_available v ON v.part_id = p.part_id
+                                         WHERE p.category_id = %s
+                                        """
+                                )
+                                params = [category_id]
+                                if path_names:
+                                        sql += " AND p.category_path_names = %s"
+                                        params.append(Json(path_names))
+                                sql += " GROUP BY p.part_id HAVING SUM(v.qty_on_hand) > 0 ORDER BY UPPER(p.mpn)"
+                                cur.execute(sql, params)
             else:
-                # (unchanged) intakes fallback
-                cur.execute(
-                    """
-                    SELECT p.part_id, p.mpn, p.manufacturer, p.description, p.detailed_description,
-                           p.product_url, p.datasheet_url, p.image_url, p.attributes,
-                           SUM(i.quantity_scanned)::int AS qty,
-                           json_agg(
-                             json_build_object('position', i.part_cataloged_position, 'qty', SUM(i.quantity_scanned))
-                             ORDER BY SUM(i.quantity_scanned) DESC
-                           ) AS bin_list
-                      FROM public.parts p
-                      JOIN public.intakes i ON i.part_id = p.part_id
-                     WHERE p.category_id = %s
-                  GROUP BY p.part_id
-                    HAVING SUM(i.quantity_scanned) > 0
-                  ORDER BY UPPER(p.mpn)
-                    """,
-                    (category_id,),
-                )
+                                # intakes fallback
+                                sql = (
+                                        """
+                                        SELECT p.part_id, p.mpn, p.manufacturer, p.description, p.detailed_description,
+                                                     p.product_url, p.datasheet_url, p.image_url, p.attributes,
+                                                     SUM(i.quantity_scanned)::int AS qty,
+                                                     json_agg(
+                                                         json_build_object('position', i.part_cataloged_position, 'qty', SUM(i.quantity_scanned))
+                                                         ORDER BY SUM(i.quantity_scanned) DESC
+                                                     ) AS bin_list
+                                            FROM public.parts p
+                                            JOIN public.intakes i ON i.part_id = p.part_id
+                                         WHERE p.category_id = %s
+                                        """
+                                )
+                                params = [category_id]
+                                if path_names:
+                                        sql += " AND p.category_path_names = %s"
+                                        params.append(Json(path_names))
+                                sql += " GROUP BY p.part_id HAVING SUM(i.quantity_scanned) > 0 ORDER BY UPPER(p.mpn)"
+                                cur.execute(sql, params)
 
             rows = cur.fetchall()
 
@@ -792,7 +800,13 @@ def catalog_dendrogram():
 
 @app.get("/catalog/<category_id>")
 def catalog_category(category_id):
-    parts = _parts_in_category(category_id)
+    # Optional exact path filter from dendrogram (e.g., "Sensors, Transducers>Optical Sensors>Photodiodes")
+    raw_path = (request.args.get("path") or "").strip()
+    path_names = [s.strip() for s in raw_path.split('>') if s.strip()] if raw_path else None
+
+    parts = _parts_in_category(category_id, path_names)
+
+    # Category display name
     cat_name = next((c["source_name"] for c in _categories_with_stock() if c["category_id"] == category_id), None)
     # Determine whether we have a profile for this category. If not, the
     # category is 'uncategorized' (no profile) and the UI should show a
@@ -802,18 +816,30 @@ def catalog_category(category_id):
     if registry and category_id in registry:
         profile_exists = True
 
-    # Fetch a representative category path (if stored) for breadcrumb
+    # Breadcrumb path: prefer provided path; else choose the most common path among parts in this category
     cat_path = None
     cat_path_names = None
-    with closing(get_conn()) as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT category_path, category_path_names FROM public.parts WHERE category_id=%s AND category_path IS NOT NULL LIMIT 1",
-                (category_id,),
-            )
-            row = cur.fetchone()
-            if row:
-                cat_path, cat_path_names = row[0], row[1]
+    if path_names:
+        cat_path_names = path_names
+        cat_path = '>'.join(path_names)
+    else:
+        with closing(get_conn()) as conn:
+            with conn.cursor() as cur:
+                # Try to pick the mode of category_path_names for this category
+                cur.execute(
+                    """
+                    SELECT category_path, category_path_names, COUNT(*) AS c
+                      FROM public.parts
+                     WHERE category_id = %s AND category_path IS NOT NULL
+                  GROUP BY category_path, category_path_names
+                  ORDER BY c DESC
+                     LIMIT 1
+                    """,
+                    (category_id,),
+                )
+                row = cur.fetchone()
+                if row:
+                    cat_path, cat_path_names = row[0], row[1]
 
     return render_template(
         "catalog/catalog_parts.html",
@@ -906,7 +932,9 @@ def api_category_nodes():
     # Sort nodes by descending stock then parts
     nodes.sort(key=lambda n: (-(n["stock"]), -(n["parts"]), n["name"].lower()))
 
-    return jsonify({"ok": True, "nodes": nodes, "depth": depth, "prefix": prefix})
+    resp = jsonify({"ok": True, "nodes": nodes, "depth": depth, "prefix": prefix})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 @app.get("/api/category_search")
 def api_category_search():
@@ -962,7 +990,54 @@ def api_category_search():
             "stock": stock,
             "category_id": rep,
         })
-    return jsonify({"ok": True, "matches": matches, "query": q, "count": len(matches)})
+    resp = jsonify({"ok": True, "matches": matches, "query": q, "count": len(matches)})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+@app.get("/api/catalog_tree_state")
+def api_catalog_tree_state():
+    """Return a simple version token for the catalog/dendrogram tree.
+
+    The token updates whenever parts are added/updated or inventory movements/intakes occur,
+    so the frontend can invalidate its localStorage cache reliably.
+
+    Response: { ok: true, version: <int epoch seconds>, last_change_iso: <iso> }
+    """
+    from datetime import datetime, timezone
+
+    def _get_max_ts(table: str, col: str):
+        if not _has_relation(table):
+            return None
+        with closing(get_conn()) as conn:
+            with conn.cursor() as cur:
+                cur.execute(f"SELECT MAX({col}) FROM public.{table}")
+                row = cur.fetchone()
+                return row[0] if row else None
+
+    # Gather candidates (None if table missing/empty)
+    parts_ts = _get_max_ts("parts", "updated_at")
+    moves_ts = _get_max_ts("movements", "created_at")
+    intake_ts = _get_max_ts("intakes", "created_at")
+
+    # Compute greatest timestamp; fallback to epoch if all None
+    candidates = [t for t in (parts_ts, moves_ts, intake_ts) if t is not None]
+    if candidates:
+        last_change = max(candidates)
+    else:
+        last_change = datetime.fromtimestamp(0, tz=timezone.utc)
+
+    # Some drivers may return naive timestamps; coerce to UTC
+    if last_change.tzinfo is None:
+        last_change = last_change.replace(tzinfo=timezone.utc)
+
+    version = int(last_change.timestamp())
+    resp = jsonify({
+        "ok": True,
+        "version": version,
+        "last_change_iso": last_change.isoformat(),
+    })
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 @app.get("/DBreset")
 def DBreset():

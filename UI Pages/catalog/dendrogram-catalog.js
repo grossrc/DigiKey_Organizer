@@ -5,9 +5,10 @@ class TreeCatalog {
     this.columnsEl = document.getElementById('tree-columns');
     this.connectionsEl = document.getElementById('tree-connections');
     this.treeWrapper = document.getElementById('tree-wrapper');
-  this.cache = new Map(); // in-memory cache: key: depth|prefix.join('>') -> nodes array
-  this.persistKeyPrefix = 'dendro_nodes_v1'; // bump version if response shape changes
-  this.cacheTTLms = 1000 * 60 * 60 * 6; // 6 hours TTL
+    this.cache = new Map(); // in-memory cache: key: depth|prefix.join('>') -> nodes array
+    this.cacheTTLms = 1000 * 60 * 60 * 6; // 6 hours TTL
+    this.catalogVersion = null; // server-provided version token
+    this.persistKeyPrefixBase = 'dendro_nodes_v1'; // base; actual key uses version suffix
     // Search state
     this.searchInput = document.getElementById('dendro-search');
     this.btnPrev = document.getElementById('dendro-prev');
@@ -18,9 +19,39 @@ class TreeCatalog {
     this.searchMatches = []; // array of {path, category_id}
     this.matchIndex = -1;
     this.setupEvents();
-    this.loadDepth(0); // initial root
+    // Bootstrap: fetch server tree version, then load root and initFromURL
+    this.bootstrap();
+  }
+
+  async bootstrap(){
+    try{
+      const resp = await fetch('/api/catalog_tree_state', {cache:'no-store'});
+      const data = await resp.json();
+      if(data && data.ok && typeof data.version === 'number'){
+        this.catalogVersion = data.version;
+      } else {
+        this.catalogVersion = 0;
+      }
+    } catch(_){ this.catalogVersion = 0; }
+    // Build a versioned storage key prefix
+    this.persistKeyPrefix = `${this.persistKeyPrefixBase}:v${this.catalogVersion}`;
+    // One-time cleanup: remove legacy unversioned keys
+    try{
+      const legacyPrefix = this.persistKeyPrefixBase + ':'; // e.g., 'dendro_nodes_v1:'
+      const currentPrefix = this.persistKeyPrefix + ':';     // e.g., 'dendro_nodes_v1:v123:'
+      const toDelete=[];
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(!k) continue;
+        if(k.startsWith(legacyPrefix) && !k.startsWith(currentPrefix)){
+          toDelete.push(k);
+        }
+      }
+      toDelete.forEach(k=>localStorage.removeItem(k));
+    } catch(_){/* ignore */}
+    await this.loadDepth(0); // initial root after we know version
     // Expand from URL if provided (?path=A>B>C)
-    this.initFromURL();
+    await this.initFromURL();
   }
 
   setupEvents(){
@@ -171,7 +202,8 @@ class TreeCatalog {
     this.path[depth] = node.name;
     // Navigate to list page if this node itself terminates (has direct parts)
     if(node.terminates_here && node.category_id){
-      window.location = `/catalog/${encodeURIComponent(node.category_id)}`;
+      const pathStr = encodeURIComponent(this.path.slice(0, depth+1).join('>'));
+      window.location = `/catalog/${encodeURIComponent(node.category_id)}?path=${pathStr}`;
       return;
     }
     // Otherwise if not final, load deeper
@@ -179,7 +211,8 @@ class TreeCatalog {
       await this.loadDepth(depth+1);
     } else if(node.final && node.category_id){
       // edge case: final leaf also has list page (should always have category_id)
-      window.location = `/catalog/${encodeURIComponent(node.category_id)}`;
+      const pathStr = encodeURIComponent(this.path.slice(0, depth+1).join('>'));
+      window.location = `/catalog/${encodeURIComponent(node.category_id)}?path=${pathStr}`;
     }
     // After any node click, re-evaluate reset availability
     this.updateSearchControls();
@@ -322,7 +355,7 @@ class TreeCatalog {
       const toDelete=[];
       for(let i=0;i<localStorage.length;i++){
         const k=localStorage.key(i);
-        if(k && k.startsWith(this.persistKeyPrefix+':')) toDelete.push(k);
+        if(k && this.persistKeyPrefix && k.startsWith(this.persistKeyPrefix+':')) toDelete.push(k);
       }
       toDelete.forEach(k=>localStorage.removeItem(k));
     }catch(_){/* ignore */}
