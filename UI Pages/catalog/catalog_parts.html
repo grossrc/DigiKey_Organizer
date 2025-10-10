@@ -2,15 +2,17 @@
 {% block content %}
   <div class="crumbs with-back">
     <button type="button" class="btn-back" id="btnBack" title="Back">← Back</button>
-    <a href="{{ url_for('catalog_dendrogram') }}">All Categories</a>
+    <a class="crumb-link home" href="{{ url_for('catalog_dendrogram') }}">All Categories</a>
     {% if category_path_names and category_path_names|length %}
       {% for seg in category_path_names %}
         {% set prefix = category_path_names[:loop.index] %}
         {% set qpath = prefix|join('>') %}
-        › <a class="crumb-link{% if not loop.last %} crumb-ancestor{% endif %}" href="{{ url_for('catalog_dendrogram') }}?path={{ qpath | urlencode }}">{{ seg }}</a>
+        <span class="crumb-sep">›</span>
+        <a class="crumb-link{% if not loop.last %} crumb-ancestor{% else %} current{% endif %}"
+           href="{{ url_for('catalog_dendrogram') }}?path={{ qpath | urlencode }}">{{ seg }}</a>
       {% endfor %}
     {% else %}
-      › <span>{{ category_name or category_id }}</span>
+      <span class="crumb-sep">›</span> <span class="crumb-link current">{{ category_name or category_id }}</span>
     {% endif %}
   </div>
   <h1 class="page-title">
