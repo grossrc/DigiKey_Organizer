@@ -263,6 +263,11 @@ ssh pi@lab-parts.local
 Run the one‑shot update sequence below. It is safe to re-run; each step is idempotent.
 ```
 cd /opt/catalog
+set -euo pipefail
+
+# env + DB check
+set -a; [ -f .env ] && . ./.env; set +a
+psql -v ON_ERROR_STOP=1 -c 'select 1;' >/dev/null
 
 # 1. Pull newest code & dependencies
 git pull
@@ -280,7 +285,6 @@ for f in deploy/migrations/*.sql; do
 done
 
 # 3. Re-index existing parts so older rows gain any new category/attribute logic
-#    Always dry-run first to see how many rows will change.
 python reformat.py --dry-run
 
 # 4. If dry-run looks reasonable, APPLY changes (will also backfill new columns):
