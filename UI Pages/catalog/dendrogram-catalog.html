@@ -37,27 +37,38 @@
         </div>
       </section>
 
-      <!-- Search bar relocated below common categories -->
-      <div class="dendro-search-bar">
-        <label for="dendro-search" class="sr-only">Search categories</label>
-        <input id="dendro-search" type="text" placeholder="Search categories..." autocomplete="off" />
-        <div class="search-controls">
-          <button id="dendro-prev" class="nav" title="Previous match" disabled>&larr;</button>
-          <span id="dendro-match-count" class="match-count">0</span>
-          <button id="dendro-next" class="nav" title="Next match" disabled>&rarr;</button>
-          <button id="dendro-reset" class="reset danger" title="Reset search & tree" disabled>Reset</button>
-        </div>
-      </div>
+      <!-- Two-column layout: left = search panel, right = tree -->
+      <div class="layout">
+        <aside class="sidebar">
+          <div class="panel">
+            <div class="panel-title">Search</div>
+            <label for="dendro-search" class="sr-only">Search categories</label>
+            <input id="dendro-search" class="input" type="text" placeholder="Search categories..." autocomplete="off" />
 
-      <!-- Horizontal tree wrapper (Technology & Physics default) -->
-      <div id="tree-wrapper" class="tree-wrapper">
-        <div id="tree-columns" class="tree-columns"></div>
-        <svg id="tree-connections" class="tree-connections"></svg>
+            <div class="dendro-controls">
+              <button id="dendro-prev" class="btn nav" title="Previous match" disabled>&larr; Prev</button>
+              <span id="dendro-match-count" class="match-count">0</span>
+              <button id="dendro-next" class="btn nav" title="Next match" disabled>Next &rarr;</button>
+            </div>
+
+            <button id="dendro-reset" class="btn danger block dendro-reset" title="Reset search & tree" disabled>Reset</button>
+
+            <div class="panel-note">Tip: Use Left/Right arrows to cycle matches. Press Esc to clear or reset.</div>
+          </div>
+        </aside>
+
+        <section class="content">
+          <!-- Horizontal tree wrapper -->
+          <div id="tree-wrapper" class="tree-wrapper">
+            <div id="tree-columns" class="tree-columns"></div>
+            <svg id="tree-connections" class="tree-connections"></svg>
+          </div>
+        </section>
       </div>
 
     </div>
   </main>
-  <footer class="cat-footer"><div class="cat-wrap">Smart Categorization • Unified Functional + Physics Ontology</div></footer>
+  <footer class="cat-footer"><div class="cat-wrap">Data referenced locally by Raspberry Pi</div></footer>
   <script src="{{ url_for('static', filename='catalog/dendrogram-catalog.js') }}"></script>
 </body>
 </html>

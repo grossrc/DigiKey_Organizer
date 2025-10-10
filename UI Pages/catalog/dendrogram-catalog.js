@@ -13,7 +13,6 @@ class TreeCatalog {
     this.searchInput = document.getElementById('dendro-search');
     this.btnPrev = document.getElementById('dendro-prev');
     this.btnNext = document.getElementById('dendro-next');
-    this.btnClear = document.getElementById('dendro-clear');
     this.btnReset = document.getElementById('dendro-reset');
     this.matchCountEl = document.getElementById('dendro-match-count');
     this.searchMatches = []; // array of {path, category_id}
@@ -65,7 +64,7 @@ class TreeCatalog {
     }
     this.btnPrev && this.btnPrev.addEventListener('click', ()=>this.cycleMatch(-1));
     this.btnNext && this.btnNext.addEventListener('click', ()=>this.cycleMatch(1));
-    this.btnClear && this.btnClear.addEventListener('click', ()=>this.clearSearch());
+  // Clear button removed; Reset handles clearing
     this.btnReset && this.btnReset.addEventListener('click', ()=>this.resetAll());
 
     // Keyboard shortcuts: Esc clears search or resets; Left/Right cycles matches; Enter cycles forward
@@ -303,9 +302,8 @@ class TreeCatalog {
   updateSearchControls(){
     const n=this.searchMatches.length;
     if(this.matchCountEl) this.matchCountEl.textContent = n? `${n} match${n!==1?'es':''}` : '0 matches';
-    const disabled = n===0;
-    [this.btnPrev,this.btnNext,this.btnClear].forEach(b=>{ if(b) b.disabled = disabled && b!==this.btnClear; });
-    if(this.btnClear) this.btnClear.disabled = this.searchInput.value.trim()==='';
+  const disabled = n===0;
+  [this.btnPrev,this.btnNext].forEach(b=>{ if(b) b.disabled = disabled; });
     if(this.btnReset) this.btnReset.disabled = this.path.length===0 && this.searchInput.value.trim()==='';
   }
 

@@ -275,8 +275,9 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # 2. Apply any pending schema migrations (new columns / indexes)
-#    Each *.sql file in deploy/migrations is meant to be run exactly once.
-#    However, they are written such that re-running should be harmless.
+#    There is no migration ledger; this loop re-executes every file each update.
+#    Migrations MUST be idempotent (use IF NOT EXISTS / ON CONFLICT / safe guards).
+#    This means already-applied migrations will not re-install or duplicate anything.
 for f in deploy/migrations/*.sql; do
   echo "Applying migration: $f"; \
   psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$f"; \
@@ -324,6 +325,19 @@ psql "$DB_URL" -c "\d+ public.parts" | grep category_path
 psql "$DB_URL" -c "SELECT count(*) FILTER (WHERE category_path IS NULL) AS missing_path FROM public.parts;"
 ```
 `missing_path` should be 0 after a successful re-index.
+
+### About database migrations (important)
+
+- Fresh installs use `deploy/schema.sql` once (installer runs it). Do not re-run `schema.sql` for updates.
+- Updates run all files in `deploy/migrations/` on every update. We intentionally don’t track which migrations were applied. Instead, every migration must be safe to run multiple times.
+- To keep migrations idempotent, prefer constructs like:
+  - `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...`
+  - `CREATE INDEX IF NOT EXISTS ...`
+  - `INSERT ... ON CONFLICT DO NOTHING` or `DO UPDATE`
+
+Current example `20251008_add_category_path.sql` follows this pattern, so re-running it won’t re-install anything.
+
+Optional: If you want strict tracking, you can add a small ledger table and guard each migration in the loop. The current approach keeps things simple and safe without extra bookkeeping.
 
 # Troubleshooting
 - If the program boots up, but you're having trouble scanning in parts, this is probably an issue with your API credentials. I included a Digikey_API_TEST.py script which you can use to input your credentials (or allow them to be pulled directly from the .env file) and ensure you get a proper return. If not- this is an issue with DigiKey API or your credentials.
