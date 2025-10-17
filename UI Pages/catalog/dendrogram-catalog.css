@@ -59,6 +59,20 @@
 .dendro-reset:not(:disabled):hover{background:#fff6f6;border-color:#ffbaba;transform:translateY(-1px);box-shadow:0 6px 16px -8px rgba(201,55,55,.35)}
 .dendro-reset:not(:disabled):active{transform:translateY(0);box-shadow:0 2px 8px -6px rgba(201,55,55,.25)}
 .dendro-reset:focus-visible{outline:2px solid #ff6b6b;outline-offset:2px}
+
+/* BOM upload styles */
+.bom-drop{border:2px dashed var(--border);border-radius:12px;background:#fff;padding:16px;text-align:center;outline:none;transition:.18s}
+.bom-drop:focus{box-shadow:0 0 0 3px rgba(30,99,255,.2)}
+.bom-drop.dragover{background:#f6fbff;border-color:var(--brand)}
+.bom-drop-inner{display:flex;flex-direction:column;gap:8px;align-items:center}
+.bom-drop-icon{font-size:28px}
+.bom-drop-text{color:var(--muted)}
+.bom-drop-or{color:#9aa8b6;font-size:.85rem}
+.bom-drop-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.btn.mini{padding:.45rem 1rem;font-size:.95rem;border-radius:10px;min-width:180px}
+.bom-drop.loading{opacity:.7;pointer-events:none}
+.panel-error{margin-top:10px;color:#c93737;background:#fff6f6;border:1px solid #ffd6d6;border-radius:10px;padding:8px;display:none}
+.panel-error.show{display:block}
 .sr-only {position:absolute;left:-9999px;height:1px;width:1px;overflow:hidden}
 .tree-node.match-focus {outline:3px solid #ffb347;position:relative}
 .tree-node.match-focus:after {content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:0 0 0 4px rgba(255,179,71,.35);pointer-events:none}

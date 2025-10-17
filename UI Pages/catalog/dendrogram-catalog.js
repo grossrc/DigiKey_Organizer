@@ -377,3 +377,75 @@ class TreeCatalog {
 }
 
 document.addEventListener('DOMContentLoaded',()=>{ new TreeCatalog(); });
+
+// BOM Upload handlers
+(function(){
+  const drop = document.getElementById('bom-drop');
+  if(!drop) return;
+  const inp = document.getElementById('bom-input');
+  const btn = document.getElementById('bom-browse');
+  const err = document.getElementById('bom-error');
+  let uploading = false;
+
+  const showError = (msg)=>{
+    if(err){ err.textContent = msg || 'Upload failed.'; err.classList.add('show'); }
+  };
+  const clearError = ()=>{ if(err){ err.textContent=''; err.classList.remove('show'); } };
+
+  const setUploading = (v)=>{
+    uploading = !!v;
+    if(btn) btn.disabled = uploading;
+    drop.classList.toggle('loading', uploading);
+  };
+
+  const handleFiles = async (files)=>{
+    clearError();
+    if(uploading) return; // guard against double-submits
+    if(!files || files.length===0){ showError('No file selected.'); return; }
+    // If a directory was chosen, attempt to find a single CSV file.
+    let file = null;
+    if(files.length === 1){ file = files[0]; }
+    else {
+      file = Array.from(files).find(f=>/\.csv$/i.test(f.name));
+    }
+    if(!file){ showError('Please provide a .csv file. You may need to add a .csv to your filename.'); return; }
+    try{
+      setUploading(true);
+      const fd = new FormData();
+      fd.append('bom', file, file.name);
+      const resp = await fetch('/api/upload_bom', { method:'POST', body: fd });
+      const data = await resp.json().catch(()=>({ok:false,error:'Invalid server response'}));
+      if(!data.ok){ showError(data.error||'Upload failed.'); return; }
+      // Redirect to uploaded result page with token
+      const token = encodeURIComponent(data.token||'');
+      window.location = `/bom?token=${token}`;
+    }catch(e){
+      console.error(e); showError('Upload error.');
+    } finally {
+      setUploading(false);
+      if(inp) inp.value = '';
+    }
+  };
+
+  // Drag & drop
+  ['dragenter','dragover'].forEach(ev=>{
+    drop.addEventListener(ev,(e)=>{ e.preventDefault(); e.stopPropagation(); drop.classList.add('dragover'); });
+  });
+  ['dragleave','drop'].forEach(ev=>{
+    drop.addEventListener(ev,(e)=>{ e.preventDefault(); e.stopPropagation(); drop.classList.remove('dragover'); });
+  });
+  drop.addEventListener('drop',(e)=>{
+    const dt = e.dataTransfer; if(dt && dt.files){ handleFiles(dt.files); }
+  });
+  // Only trigger file dialog when clicking empty area; ignore clicks on buttons
+  drop.addEventListener('click',(e)=>{
+    if(e.target && (e.target.id === 'bom-browse' || e.target.closest('.bom-drop-actions'))) return;
+    inp && inp.click();
+  });
+
+  // File chooser
+  btn && btn.addEventListener('click',(e)=>{ e.stopPropagation(); inp && inp.click(); });
+  inp && inp.addEventListener('change',()=> handleFiles(inp.files));
+
+  // No directory chooser
+})();

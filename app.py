@@ -1047,6 +1047,114 @@ def DBreset():
 def info():
     return render_template("info.html")
 
+@app.post("/api/upload_bom")
+def api_upload_bom():
+    """Accept a CSV BOM upload, parse it, match against inventory, and return a token.
+    
+    Returns {ok:true, token:"..."} on success, {ok:false, error:"..."} on error.
+    """
+    f = (request.files or {}).get('bom')
+    if not f or not getattr(f, 'filename', ''):
+        return jsonify({"ok": False, "error": "No file provided."}), 400
+
+    name = f.filename or ''
+    lower = name.lower()
+    # Simple allow-list based on extension or mimetype
+    if not (lower.endswith('.csv') or 'csv' in (f.mimetype or '').lower()):
+        return jsonify({"ok": False, "error": "Please upload a .csv file."}), 400
+
+    # Read file content
+    try:
+        content = f.stream.read().decode('utf-8', errors='replace')
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Failed to read file: {str(e)}"}), 400
+
+    # Parse BOM
+    from bom_extract import parse_bom_csv, find_matches
+    try:
+        bom_lines, warnings = parse_bom_csv(content)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Parse error: {str(e)}"}), 400
+
+    if not bom_lines:
+        return jsonify({"ok": False, "error": "No valid BOM lines found. Please check file format."}), 400
+
+    # Get all available parts from inventory for matching
+    inventory = _list_available_parts()
+
+    # Match each BOM line
+    results = []
+    for line in bom_lines:
+        matches = find_matches(line, inventory)
+        results.append({
+            "bom_line": {
+                "row_num": line.row_num,
+                "designators": line.designators,
+                "quantity": line.quantity,
+                "value": line.value,
+                "footprint": line.footprint,
+                "mpn": line.mpn,
+                "manufacturer": line.manufacturer,
+                "description": line.description,
+            },
+            "matches": [
+                {
+                    "part_id": m.part_id,
+                    "mpn": m.mpn,
+                    "manufacturer": m.manufacturer,
+                    "description": m.description,
+                    "category": m.category,
+                    "attributes": m.attributes,
+                    "qty_available": m.qty_available,
+                    "bins": m.bins,
+                    "match_type": m.match_type,
+                    "confidence": round(m.confidence, 2),
+                    "match_reason": m.match_reason,
+                }
+                for m in matches[:5]  # Limit to top 5 matches per line
+            ]
+        })
+
+    # Generate token and store results in memory cache (simple approach)
+    import time, hashlib
+    tok = hashlib.sha256((name + str(time.time())).encode()).hexdigest()[:16]
+    
+    # Store in global dict (simple in-memory cache; consider Redis/file for production)
+    if not hasattr(app, '_bom_cache'):
+        app._bom_cache = {}
+    
+    app._bom_cache[tok] = {
+        "filename": name,
+        "timestamp": time.time(),
+        "warnings": warnings,
+        "results": results,
+    }
+
+    return jsonify({"ok": True, "token": tok})
+
+
+@app.get("/api/bom_results/<token>")
+def api_bom_results(token):
+    """Retrieve parsed BOM results by token."""
+    if not hasattr(app, '_bom_cache') or token not in app._bom_cache:
+        return jsonify({"ok": False, "error": "Invalid or expired token"}), 404
+    
+    data = app._bom_cache[token]
+    resp = jsonify({
+        "ok": True,
+        "filename": data["filename"],
+        "warnings": data["warnings"],
+        "results": data["results"],
+    })
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+@app.get("/bom")
+def bom_results_page():
+    """Serve the BOM results page."""
+    return render_template("bom upload/uploaded_BOM.html")
+
 # -------------------------------------------------------------------
 # Routes: API
 # -------------------------------------------------------------------

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>BOM Analysis Results</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='catalog/catalog.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='bom upload/bom.css') }}">
+</head>
+<body class="cat-body">
+  <main class="cat-main">
+    <div class="cat-wrap">
+      <header class="catalog-hero">
+        <h1 class="page-title">BOM Analysis</h1>
+        <p class="page-subtitle">Matching uploaded BOM against inventory</p>
+      </header>
+
+      <!-- Loading state -->
+      <div id="loading" class="panel">
+        <div class="loading-spinner">Loading...</div>
+      </div>
+
+      <!-- Error state -->
+      <div id="error" class="panel panel-error" style="display:none;">
+        <div class="panel-title">Error</div>
+        <p id="error-message"></p>
+        <a href="{{ url_for('catalog_dendrogram') }}" class="btn">Back to Catalog</a>
+      </div>
+
+      <!-- Results container -->
+      <div id="results" style="display:none;">
+        
+        <!-- Summary panel -->
+        <div class="panel summary-panel">
+          <div class="panel-title">Summary: <span id="filename"></span></div>
+          <div class="summary-stats">
+            <div class="stat">
+              <div class="stat-value" id="total-lines">0</div>
+              <div class="stat-label">BOM Lines</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value stat-exact" id="exact-matches">0</div>
+              <div class="stat-label">Exact Matches</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value stat-close" id="close-matches">0</div>
+              <div class="stat-label">Close Matches</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value stat-none" id="no-matches">0</div>
+              <div class="stat-label">No Matches</div>
+            </div>
+          </div>
+          <div id="warnings" class="warnings" style="display:none;"></div>
+        </div>
+
+        <!-- Filters & controls -->
+        <div class="panel controls-panel">
+          <div class="controls-row">
+            <label>
+              <input type="checkbox" id="filter-exact" checked> Exact
+            </label>
+            <label>
+              <input type="checkbox" id="filter-close" checked> Close
+            </label>
+            <label>
+              <input type="checkbox" id="filter-alternate" checked> Alternate
+            </label>
+            <label>
+              <input type="checkbox" id="filter-none" checked> No Match
+            </label>
+            <button id="add-all-exact" class="btn primary">Add All Exact Matches to List</button>
+          </div>
+        </div>
+
+        <!-- BOM results table -->
+        <div class="bom-table-container">
+          <table class="bom-table" id="bom-table">
+            <thead>
+              <tr>
+                <th>Line</th>
+                <th>Designators</th>
+                <th>Qty</th>
+                <th>Value</th>
+                <th>Footprint</th>
+                <th>MPN</th>
+                <th>Match Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="bom-tbody">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Back link -->
+        <div class="panel">
+          <a href="{{ url_for('catalog_dendrogram') }}" class="btn">← Back to Catalog</a>
+        </div>
+      </div>
+
+    </div>
+  </main>
+  <footer class="cat-footer"><div class="cat-wrap">BOM Analysis • Intelligent Part Matching</div></footer>
+  <script src="{{ url_for('static', filename='bom upload/bom.js') }}"></script>
+</body>
+</html>

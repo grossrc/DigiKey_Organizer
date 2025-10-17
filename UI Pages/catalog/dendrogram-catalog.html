@@ -55,6 +55,23 @@
 
             <div class="panel-note">Tip: Use Left/Right arrows to cycle matches. Press Esc to clear or reset.</div>
           </div>
+
+          <!-- BOM Upload panel -->
+          <div class="panel">
+            <div class="panel-title">Upload BOM (CSV)</div>
+            <div id="bom-drop" class="bom-drop" tabindex="0" aria-label="BOM CSV drop area">
+              <div class="bom-drop-inner">
+                <div class="bom-drop-icon">📄</div>
+                <div class="bom-drop-text">Drag & drop a .csv file here</div>
+                <div class="bom-drop-or">or</div>
+                <div class="bom-drop-actions">
+                  <button id="bom-browse" class="btn mini" type="button">Choose file</button>
+                </div>
+              </div>
+              <input id="bom-input" type="file" accept=".csv,text/csv" hidden />
+            </div>
+            <div id="bom-error" class="panel-error" role="status" aria-live="polite"></div>
+          </div>
         </aside>
 
         <section class="content">
