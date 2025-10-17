@@ -1,10 +1,48 @@
 {% extends "catalog/catalog_base.html" %}
 {% block content %}
-  <div class="crumbs">
-    <a href="{{ url_for('catalog_home') }}">All Categories</a> ›
-    <span>{{ category_name or category_id }}</span>
+  <div class="crumbs with-back">
+    <button type="button" class="btn-back" id="btnBack" title="Back">← Back</button>
+    <a href="{{ url_for('catalog_dendrogram') }}">All Categories</a>
+    {% if category_path_names and category_path_names|length %}
+      {% for seg in category_path_names %}
+        {% set prefix = category_path_names[:loop.index] %}
+        {% set qpath = prefix|join('>') %}
+        <span class="crumb-sep">›</span>
+        {% if not loop.last %}
+          <a href="{{ url_for('catalog_dendrogram') }}?path={{ qpath | urlencode }}">{{ seg }}</a>
+        {% else %}
+          <span class="muted">{{ seg }}</span>
+        {% endif %}
+      {% endfor %}
+    {% else %}
+      <span class="crumb-sep">›</span> <span class="muted">{{ category_name or category_id }}</span>
+    {% endif %}
   </div>
-  <h1 class="page-title">{{ category_name or category_id }}</h1>
+  <h1 class="page-title">
+    {% if category_path_names and category_path_names|length %}
+      {{ category_path_names[-1] }}
+    {% else %}
+      {{ category_name or category_id }}
+    {% endif %}
+  </h1>
+  <script>
+    (function(){
+      const btn = document.getElementById('btnBack');
+      if(!btn) return;
+      btn.addEventListener('click', function(){
+        try {
+          const ref = document.referrer || '';
+          const sameOrigin = ref.startsWith(location.origin);
+          if (sameOrigin) {
+            history.back();
+            return;
+          }
+        } catch(_){}
+        // Fallback to dendrogram if no safe history
+        window.location = "{{ url_for('catalog_dendrogram') }}";
+      });
+    })();
+  </script>
 
   {% if profile_exists is defined and not profile_exists %}
     <div class="panel note">

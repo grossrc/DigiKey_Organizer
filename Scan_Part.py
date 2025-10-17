@@ -181,19 +181,21 @@ def normalize_and_save(dk_json, scan_fields, REGISTRY=None,
                     )
 
                 # 2) Upsert part and get part_id
+                # NOTE: Assumes manual migration added columns category_path (text)
+                # and category_path_names (jsonb) to parts table. If not present, this will error.
                 cur.execute(
                     """
                     INSERT INTO parts (
                         mpn, manufacturer, description, detailed_description,
                         product_url, datasheet_url, image_url,
                         unit_price, product_status, lifecycle_active, lifecycle_obsolete,
-                        category_id, category_source_name,
+                        category_id, category_source_name, category_path, category_path_names,
                         attributes, unknown_parameters, raw_vendor_json
                     ) VALUES (
                         %(mpn)s, %(manufacturer)s, %(description)s, %(detailed_description)s,
                         %(product_url)s, %(datasheet_url)s, %(image_url)s,
                         %(unit_price)s, %(product_status)s, %(lifecycle_active)s, %(lifecycle_obsolete)s,
-                        %(category_id)s, %(category_source_name)s,
+                        %(category_id)s, %(category_source_name)s, %(category_path)s, %(category_path_names)s,
                         %(attributes)s, %(unknown_parameters)s, %(raw_vendor_json)s
                     )
                     ON CONFLICT (mpn) DO UPDATE SET
@@ -209,6 +211,8 @@ def normalize_and_save(dk_json, scan_fields, REGISTRY=None,
                         lifecycle_obsolete    = EXCLUDED.lifecycle_obsolete,
                         category_id           = EXCLUDED.category_id,
                         category_source_name  = EXCLUDED.category_source_name,
+                        category_path         = EXCLUDED.category_path,
+                        category_path_names   = EXCLUDED.category_path_names,
                         attributes            = EXCLUDED.attributes,
                         unknown_parameters    = EXCLUDED.unknown_parameters,
                         raw_vendor_json       = EXCLUDED.raw_vendor_json,
@@ -219,6 +223,8 @@ def normalize_and_save(dk_json, scan_fields, REGISTRY=None,
                         **header,
                         "category_id": cat_id,
                         "category_source_name": cat_name,
+                        "category_path": decoded.get("category_path"),
+                        "category_path_names": Json(decoded.get("category_path_names") or []),
                         "attributes": Json(decoded.get("attributes") or {}),
                         "unknown_parameters": Json(decoded.get("unknown_parameters") or {}),
                         "raw_vendor_json": Json(dk_json),

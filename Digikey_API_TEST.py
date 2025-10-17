@@ -113,7 +113,7 @@ def call_DigiKey_API(part_number):
 
 def main():
     # Allow passing a part number on the command line for quick testing
-    MFR_PN = sys.argv[1] if len(sys.argv) > 1 else '24AA00T-I/OT-ND'
+    MFR_PN = sys.argv[1] if len(sys.argv) > 1 else 'PJ-002A'
     dk_json = call_DigiKey_API(MFR_PN)  # Call DigiKey API and return JSON
     if dk_json:
         print('\n---- DigiKey raw JSON (truncated pretty) -----')

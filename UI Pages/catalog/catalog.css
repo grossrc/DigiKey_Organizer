@@ -141,7 +141,17 @@ a:hover{text-decoration:underline}
 .icon-btn:hover{background:#f4f7fc}
 
 /* crumbs */
-.crumbs{color:var(--muted);margin-bottom:8px}
+.crumbs{color:var(--muted);margin-bottom:10px}
+.crumbs.with-back{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.btn-back{appearance:none;border:1px solid var(--border);background:#fff;color:var(--fg);padding:.6rem 1.05rem;border-radius:12px;font-weight:800;cursor:pointer;font-size:1.05rem;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+.btn-back:hover{background:#f4f7fc;transform:translateY(-1px)}
+.btn-back:active{transform:translateY(0)}
+
+/* Breadcrumb separators */
+.crumb-sep{color:#9aa8b6;display:inline-block;margin:0 4px}
+
+/* Add breathing room below the NOTE panel on uncategorized pages */
+.panel.note{margin-bottom:12px}
 
 /* Actions layout */
 .list-actions { margin-top: 12px; }

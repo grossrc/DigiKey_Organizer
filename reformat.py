@@ -149,6 +149,8 @@ class PartRow:
     lifecycle_obsolete: Optional[bool]
     category_id: Optional[str]
     category_source_name: Optional[str]
+    category_path: Optional[str]
+    category_path_names: List[str] | None
     attributes: Dict[str, Any]
     unknown_parameters: Dict[str, Any]
     raw_vendor_json: Dict[str, Any] | None
@@ -170,6 +172,8 @@ class PartRow:
             lifecycle_obsolete=row.get("lifecycle_obsolete"),
             category_id=row.get("category_id"),
             category_source_name=row.get("category_source_name"),
+            category_path=row.get("category_path"),
+            category_path_names=row.get("category_path_names"),
             attributes=row.get("attributes") or {},
             unknown_parameters=row.get("unknown_parameters") or {},
             raw_vendor_json=row.get("raw_vendor_json"),
@@ -184,7 +188,7 @@ def fetch_parts(limit: Optional[int], mpn_filter: Optional[str]) -> List[PartRow
         "SELECT part_id, mpn, manufacturer, description, detailed_description,",
         "       product_url, datasheet_url, image_url, unit_price, product_status,",
         "       lifecycle_active, lifecycle_obsolete, category_id, category_source_name,",
-        "       attributes, unknown_parameters, raw_vendor_json",
+        "       category_path, category_path_names, attributes, unknown_parameters, raw_vendor_json",
         "  FROM public.parts",
     ]
     params: List[Any] = []
@@ -228,6 +232,8 @@ def compute_new_state(
     decoded = decode_product(row.raw_vendor_json, registry)
     new_cat_id = decoded.get("category_id")
     new_cat_name = decoded.get("category_source_name")
+    new_cat_path = decoded.get("category_path")
+    new_cat_path_names = decoded.get("category_path_names") or []
 
     new_attrs = decoded.get("attributes") or {}
     new_unknown = decoded.get("unknown_parameters") or {}
@@ -235,9 +241,14 @@ def compute_new_state(
     updates: Dict[str, Any] = {}
 
     # Always consider category + attributes
-    if new_cat_id != row.category_id or new_cat_name != row.category_source_name:
+    if (new_cat_id != row.category_id or
+        new_cat_name != row.category_source_name or
+        new_cat_path != row.category_path or
+        (row.category_path_names or []) != new_cat_path_names):
         updates["category_id"] = new_cat_id
         updates["category_source_name"] = new_cat_name
+        updates["category_path"] = new_cat_path
+        updates["category_path_names"] = new_cat_path_names
     if new_attrs != row.attributes:
         updates["attributes"] = new_attrs
     if new_unknown != row.unknown_parameters:
@@ -309,7 +320,7 @@ def apply_updates(rows: List[PartRow], planned: Dict[int, Dict[str, Any]], clean
                     sets = []
                     params = []
                     for k, v in changes.items():
-                        if k in ("attributes", "unknown_parameters"):
+                        if k in ("attributes", "unknown_parameters", "category_path_names"):
                             sets.append(f"{k} = %s")
                             params.append(Json(v))
                         else:
@@ -396,7 +407,7 @@ def main(argv: List[str]):
             continue
         planned[r.part_id] = upd
         total_updates += 1
-        if any(k in upd for k in ("category_id", "category_source_name")):
+        if any(k in upd for k in ("category_id", "category_source_name", "category_path", "category_path_names")):
             changed_cats += 1
         if any(k in upd for k in ("attributes", "unknown_parameters")):
             changed_attrs += 1

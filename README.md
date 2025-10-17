@@ -253,30 +253,91 @@ http://lab-parts.local/catalog
 If this project is useful to you, and if it saves you money, please share the love at:
 https://www.buymeacoffee.com/ryonicle
 
-
 # Updating the codebase
-With the previous installation successful, you should be up to date running the latest version. However, as things change in the future, you can run the following commands to automatically pull the latest verison from github which are presumibly better.
-SSH into the pi- you may have to allow this using raspi-config on the Pi itself.
+The project code will change periodically to fix bugs and make improvements. This section outlines how to simply update your system to the latest version. To keep your running instance healthy you perform an **Update + Migrate + Re‑index** sequence. This preserves all part IDs, locations, and movement history while bringing old rows up to date with the latest decoder logic and schema. The codebase is also brought up to the most recent version.
+
+SSH into the Pi (enable SSH first via raspi-config if needed):
 ```
 ssh pi@lab-parts.local
 ```
-then run
+Run the one‑shot update sequence below. It is safe to re-run; each step is idempotent.
 ```
 cd /opt/catalog
+set -euo pipefail
+
+# env + DB check
+set -a; [ -f .env ] && . ./.env; set +a
+psql -v ON_ERROR_STOP=1 -c 'select 1;' >/dev/null
+
+# 1. Pull newest code & dependencies
 git pull
 source .venv/bin/activate
 pip install -r requirements.txt
+
+# 2. Apply any pending schema migrations (new columns / indexes)
+#    There is no migration ledger; this loop re-executes every file each update.
+#    Migrations MUST be idempotent (use IF NOT EXISTS / ON CONFLICT / safe guards).
+#    This means already-applied migrations will not re-install or duplicate anything.
+for f in deploy/migrations/*.sql; do
+  echo "Applying migration: $f"; \
+  psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$f"; \
+  echo "Done: $f"; \
+  echo
+done
+
+# 3. Re-index existing parts so older rows gain any new category/attribute logic
+python reformat.py --dry-run
+
+# 4. If dry-run looks reasonable, APPLY changes (will also backfill new columns):
+python reformat.py --cleanup-unused-categories
+
+# 5. Restart services so running app code matches the updated library code
 sudo systemctl restart catalog
 sudo systemctl reload nginx
 ```
 
-## (optional) Reformat the DB
-Sometimes as new code updates/changes the older part entries are left behind. Newly scanned parts will reflect changes in how they're indexed, processed, an referenced. However, older part persist in the DB in the same way that they were originally entered in- often long before recent updates. To solve this issue, a roformat file was created to allow all parts to be re-indexed using current schemes. Data like bin location, quantity, and movements are preserved in this process since these persist through code changes. Other parameters like attributes and categorization might change depending on how the new code handles them.
+### Why the re-index step is now mandatory
+Older parts were stored using earlier decoding rules. Without re-indexing:
+ - New hierarchical category path columns (e.g. `category_path`) would be NULL.
+ - Improved attribute extraction / unknown parameter isolation won’t appear.
+ - Analytics or UI features depending on new columns won’t see legacy parts.
+
+Re-indexing is **in-place** and preserves:
+ - `part_id`, creation timestamps, intake & movement history, quantities
+ - Raw vendor payload (`raw_vendor_json`) for reproducibility
+
+It updates:
+ - Category id, source name, full hierarchical path
+ - Attributes & unknown parameters according to newest profiles
+ - (Optionally) lifecycle flags & price unless you override flags in the script
+
+### Advanced / selective usage
+If you have a very large DB and want to stage the upgrade:
 ```
-# Dry run then apply
-python reformat.py --dry-run
-python reformat.py --cleanup-unused-categories
+python reformat.py --dry-run --limit 200
+python reformat.py --limit 200
 ```
+Repeat in batches, then run a final pass without --limit to catch any remainder.
+
+### Verifying after update
+```
+psql "$DB_URL" -c "\d+ public.parts" | grep category_path
+psql "$DB_URL" -c "SELECT count(*) FILTER (WHERE category_path IS NULL) AS missing_path FROM public.parts;"
+```
+`missing_path` should be 0 after a successful re-index.
+
+### About database migrations (important)
+
+- Fresh installs use `deploy/schema.sql` once (installer runs it). Do not re-run `schema.sql` for updates.
+- Updates run all files in `deploy/migrations/` on every update. We intentionally don’t track which migrations were applied. Instead, every migration must be safe to run multiple times.
+- To keep migrations idempotent, prefer constructs like:
+  - `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...`
+  - `CREATE INDEX IF NOT EXISTS ...`
+  - `INSERT ... ON CONFLICT DO NOTHING` or `DO UPDATE`
+
+Current example `20251008_add_category_path.sql` follows this pattern, so re-running it won’t re-install anything.
+
+Optional: If you want strict tracking, you can add a small ledger table and guard each migration in the loop. The current approach keeps things simple and safe without extra bookkeeping.
 
 # Troubleshooting
 - If the program boots up, but you're having trouble scanning in parts, this is probably an issue with your API credentials. I included a Digikey_API_TEST.py script which you can use to input your credentials (or allow them to be pulled directly from the .env file) and ensure you get a proper return. If not- this is an issue with DigiKey API or your credentials.

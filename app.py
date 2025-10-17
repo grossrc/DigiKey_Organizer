@@ -7,6 +7,7 @@ import os
 from contextlib import closing
 from pathlib import Path
 from typing import Any, Dict
+from psycopg2.extras import Json
 import importlib
 
 # Third-party
@@ -191,6 +192,8 @@ def _build_preview(dk_json: Dict[str, Any], scan_fields: Dict[str, Any]) -> Dict
         "category": {
             "id": decoded.get("category_id"),
             "name": decoded.get("category_source_name"),
+            "path": decoded.get("category_path"),
+            "path_names": decoded.get("category_path_names") or [],
         },
         "attributes": decoded.get("attributes") or {},
         "unknown_parameters": decoded.get("unknown_parameters") or {},
@@ -492,90 +495,201 @@ def _categories_with_stock():
         for r in rows
     ]
 
-def _parts_in_category(category_id: str):
+def _get_category_id_by_name(name: str):
+    """Resolve a category_id by a human-readable name (case-insensitive).
+    Primary: public.categories.source_name
+    Fallback: public.parts.category_source_name
+    Returns category_id or None if not found.
+    """
+    if not name:
+        return None
+    with closing(get_conn()) as conn:
+        with conn.cursor() as cur:
+            # 1) Exact (case-insensitive) match in categories.source_name
+            cur.execute(
+                """
+                SELECT category_id
+                  FROM public.categories
+                 WHERE UPPER(source_name) = UPPER(%s)
+                 LIMIT 1
+                """,
+                (name,),
+            )
+            row = cur.fetchone()
+            if row:
+                return row[0]
+
+            # 2) Contains match in categories.source_name (prefer longer names)
+            cur.execute(
+                """
+                SELECT category_id
+                  FROM public.categories
+                 WHERE source_name ILIKE %s
+                 ORDER BY LENGTH(source_name) DESC
+                 LIMIT 1
+                """,
+                (f"%{name}%",),
+            )
+            row = cur.fetchone()
+            if row:
+                return row[0]
+
+            # 3) Exact match in parts.category_source_name
+            cur.execute(
+                """
+                SELECT category_id
+                  FROM public.parts
+                 WHERE UPPER(category_source_name) = UPPER(%s)
+                 LIMIT 1
+                """,
+                (name,),
+            )
+            row = cur.fetchone()
+            if row:
+                return row[0]
+
+            # 4) Contains match in parts.category_source_name
+            cur.execute(
+                """
+                SELECT category_id
+                  FROM public.parts
+                 WHERE category_source_name ILIKE %s
+                 GROUP BY category_id
+                 ORDER BY COUNT(*) DESC
+                 LIMIT 1
+                """,
+                (f"%{name}%",),
+            )
+            row = cur.fetchone()
+            return row[0] if row else None
+
+def _build_common_categories():
+    """Return the configured common categories with stock-aware part counts.
+
+    Output: list of { title, category_id, parts }
+    parts == number of distinct parts currently available (>0 on-hand).
+    """
+    # Desired display titles (de-duplicated)
+    desired = [
+        "Chip Resistor - Surface Mount",
+        "Ceramic Capacitors",
+        "Fixed Inductors",
+        "Single Diodes",
+        "Fixed Inductors",
+    ]
+    seen_titles = set()
+    titles = []
+    for t in desired:
+        if t not in seen_titles:
+            seen_titles.add(t)
+            titles.append(t)
+
+    # Map category_id -> parts with stock
+    stock_rows = _categories_with_stock()
+    parts_by_id = {r["category_id"]: r["part_count"] for r in stock_rows}
+
+    results = []
+    for title in titles:
+        cat_id = _get_category_id_by_name(title)
+        parts = parts_by_id.get(cat_id, 0) if cat_id else 0
+        results.append({
+            "title": title,
+            "category_id": cat_id,
+            "parts": parts,
+        })
+    return results
+
+def _parts_in_category(category_id: str, path_names: list[str] | None = None):
     with closing(get_conn()) as conn:
         with conn.cursor() as cur:
             if _has_relation("movements"):
                 # ✅ Pre-aggregate per-bin first; then aggregate to bins JSON and totals
-                cur.execute(
-                    """
-                    WITH pos_qty AS (
-                        SELECT m.part_id,
-                               m.position_code,
-                               SUM(m.quantity_delta)::int AS qty
-                          FROM public.movements m
-                         WHERE m.position_code NOT LIKE 'OUT%%'
-                      GROUP BY m.part_id, m.position_code
-                        HAVING SUM(m.quantity_delta) > 0
-                    ),
-                    part_totals AS (
-                        SELECT part_id, SUM(qty)::int AS qty
-                          FROM pos_qty
-                      GROUP BY part_id
-                    )
-                    SELECT p.part_id,
-                           p.mpn,
-                           p.manufacturer,
-                           p.description,
-                           p.detailed_description,
-                           p.product_url,
-                           p.datasheet_url,
-                           p.image_url,
-                           p.attributes,
-                           pt.qty AS qty,
-                           json_agg(
-                             json_build_object('position', pq.position_code, 'qty', pq.qty)
-                             ORDER BY pq.qty DESC
-                           ) AS bin_list
-                      FROM public.parts p
-                      JOIN part_totals pt ON pt.part_id = p.part_id
-                      JOIN pos_qty pq     ON pq.part_id = p.part_id
-                     WHERE p.category_id = %s
-                  GROUP BY p.part_id, pt.qty
-                  ORDER BY UPPER(p.mpn)
-                    """,
-                    (category_id,),
-                )
+                                sql = (
+                                        """
+                                        WITH pos_qty AS (
+                                                SELECT m.part_id,
+                                                             m.position_code,
+                                                             SUM(m.quantity_delta)::int AS qty
+                                                    FROM public.movements m
+                                                 WHERE m.position_code NOT LIKE 'OUT%%'
+                                            GROUP BY m.part_id, m.position_code
+                                                HAVING SUM(m.quantity_delta) > 0
+                                        ),
+                                        part_totals AS (
+                                                SELECT part_id, SUM(qty)::int AS qty
+                                                    FROM pos_qty
+                                            GROUP BY part_id
+                                        )
+                                        SELECT p.part_id,
+                                                     p.mpn,
+                                                     p.manufacturer,
+                                                     p.description,
+                                                     p.detailed_description,
+                                                     p.product_url,
+                                                     p.datasheet_url,
+                                                     p.image_url,
+                                                     p.attributes,
+                                                     pt.qty AS qty,
+                                                     json_agg(
+                                                         json_build_object('position', pq.position_code, 'qty', pq.qty)
+                                                         ORDER BY pq.qty DESC
+                                                     ) AS bin_list
+                                            FROM public.parts p
+                                            JOIN part_totals pt ON pt.part_id = p.part_id
+                                            JOIN pos_qty pq     ON pq.part_id = p.part_id
+                                         WHERE p.category_id = %s
+                                        """
+                                )
+                                params = [category_id]
+                                if path_names:
+                                        sql += " AND p.category_path_names = %s"
+                                        params.append(Json(path_names))
+                                sql += " GROUP BY p.part_id, pt.qty ORDER BY UPPER(p.mpn)"
+                                cur.execute(sql, params)
             elif _has_relation("v_inventory_available"):
-                # (unchanged) view-based path
-                cur.execute(
-                    """
-                    SELECT p.part_id, p.mpn, p.manufacturer, p.description, p.detailed_description,
-                           p.product_url, p.datasheet_url, p.image_url, p.attributes,
-                           SUM(v.qty_on_hand)::int AS qty,
-                           json_agg(
-                             json_build_object('position', v.position_code, 'qty', v.qty_on_hand)
-                             ORDER BY v.qty_on_hand DESC
-                           ) AS bin_list
-                      FROM public.parts p
-                      JOIN public.v_inventory_available v ON v.part_id = p.part_id
-                     WHERE p.category_id = %s
-                  GROUP BY p.part_id
-                    HAVING SUM(v.qty_on_hand) > 0
-                  ORDER BY UPPER(p.mpn)
-                    """,
-                    (category_id,),
-                )
+                                # view-based path
+                                sql = (
+                                        """
+                                        SELECT p.part_id, p.mpn, p.manufacturer, p.description, p.detailed_description,
+                                                     p.product_url, p.datasheet_url, p.image_url, p.attributes,
+                                                     SUM(v.qty_on_hand)::int AS qty,
+                                                     json_agg(
+                                                         json_build_object('position', v.position_code, 'qty', v.qty_on_hand)
+                                                         ORDER BY v.qty_on_hand DESC
+                                                     ) AS bin_list
+                                            FROM public.parts p
+                                            JOIN public.v_inventory_available v ON v.part_id = p.part_id
+                                         WHERE p.category_id = %s
+                                        """
+                                )
+                                params = [category_id]
+                                if path_names:
+                                        sql += " AND p.category_path_names = %s"
+                                        params.append(Json(path_names))
+                                sql += " GROUP BY p.part_id HAVING SUM(v.qty_on_hand) > 0 ORDER BY UPPER(p.mpn)"
+                                cur.execute(sql, params)
             else:
-                # (unchanged) intakes fallback
-                cur.execute(
-                    """
-                    SELECT p.part_id, p.mpn, p.manufacturer, p.description, p.detailed_description,
-                           p.product_url, p.datasheet_url, p.image_url, p.attributes,
-                           SUM(i.quantity_scanned)::int AS qty,
-                           json_agg(
-                             json_build_object('position', i.part_cataloged_position, 'qty', SUM(i.quantity_scanned))
-                             ORDER BY SUM(i.quantity_scanned) DESC
-                           ) AS bin_list
-                      FROM public.parts p
-                      JOIN public.intakes i ON i.part_id = p.part_id
-                     WHERE p.category_id = %s
-                  GROUP BY p.part_id
-                    HAVING SUM(i.quantity_scanned) > 0
-                  ORDER BY UPPER(p.mpn)
-                    """,
-                    (category_id,),
-                )
+                                # intakes fallback
+                                sql = (
+                                        """
+                                        SELECT p.part_id, p.mpn, p.manufacturer, p.description, p.detailed_description,
+                                                     p.product_url, p.datasheet_url, p.image_url, p.attributes,
+                                                     SUM(i.quantity_scanned)::int AS qty,
+                                                     json_agg(
+                                                         json_build_object('position', i.part_cataloged_position, 'qty', SUM(i.quantity_scanned))
+                                                         ORDER BY SUM(i.quantity_scanned) DESC
+                                                     ) AS bin_list
+                                            FROM public.parts p
+                                            JOIN public.intakes i ON i.part_id = p.part_id
+                                         WHERE p.category_id = %s
+                                        """
+                                )
+                                params = [category_id]
+                                if path_names:
+                                        sql += " AND p.category_path_names = %s"
+                                        params.append(Json(path_names))
+                                sql += " GROUP BY p.part_id HAVING SUM(i.quantity_scanned) > 0 ORDER BY UPPER(p.mpn)"
+                                cur.execute(sql, params)
 
             rows = cur.fetchall()
 
@@ -675,12 +789,24 @@ def api_available_parts():
 
 @app.get("/catalog")
 def catalog_home():
-    cats = _categories_with_stock()
-    return render_template("catalog/catalog_categories.html", categories=cats)
+    # Deprecated in favor of the dendrogram UI
+    return redirect(url_for('catalog_dendrogram'))
+
+@app.get("/catalog/dendrogram")
+def catalog_dendrogram():
+    """Serve the experimental dendrogram navigation UI."""
+    commons = _build_common_categories()
+    return render_template("catalog/dendrogram-catalog.html", common_categories=commons)
 
 @app.get("/catalog/<category_id>")
 def catalog_category(category_id):
-    parts = _parts_in_category(category_id)
+    # Optional exact path filter from dendrogram (e.g., "Sensors, Transducers>Optical Sensors>Photodiodes")
+    raw_path = (request.args.get("path") or "").strip()
+    path_names = [s.strip() for s in raw_path.split('>') if s.strip()] if raw_path else None
+
+    parts = _parts_in_category(category_id, path_names)
+
+    # Category display name
     cat_name = next((c["source_name"] for c in _categories_with_stock() if c["category_id"] == category_id), None)
     # Determine whether we have a profile for this category. If not, the
     # category is 'uncategorized' (no profile) and the UI should show a
@@ -690,13 +816,228 @@ def catalog_category(category_id):
     if registry and category_id in registry:
         profile_exists = True
 
+    # Breadcrumb path: prefer provided path; else choose the most common path among parts in this category
+    cat_path = None
+    cat_path_names = None
+    if path_names:
+        cat_path_names = path_names
+        cat_path = '>'.join(path_names)
+    else:
+        with closing(get_conn()) as conn:
+            with conn.cursor() as cur:
+                # Try to pick the mode of category_path_names for this category
+                cur.execute(
+                    """
+                    SELECT category_path, category_path_names, COUNT(*) AS c
+                      FROM public.parts
+                     WHERE category_id = %s AND category_path IS NOT NULL
+                  GROUP BY category_path, category_path_names
+                  ORDER BY c DESC
+                     LIMIT 1
+                    """,
+                    (category_id,),
+                )
+                row = cur.fetchone()
+                if row:
+                    cat_path, cat_path_names = row[0], row[1]
+
     return render_template(
         "catalog/catalog_parts.html",
         category_id=category_id,
         category_name=cat_name,
+        category_path=cat_path,
+        category_path_names=cat_path_names or [],
         parts=parts,
         profile_exists=profile_exists,
     )
+
+@app.get("/api/category_nodes")
+def api_category_nodes():
+    """Return hierarchical category nodes for dendrogram navigation.
+
+    Query params:
+      depth: integer depth (0-based)
+      prefix: repeated parameter specifying each ancestor segment (order matters)
+
+    Response JSON:
+      { ok: true, nodes: [
+           { name, parts, stock, final, category_id? }
+        ] }
+    """
+    try:
+        depth = int(request.args.get("depth", 0))
+        prefix = request.args.getlist("prefix")  # list of ancestor names
+    except Exception:
+        return jsonify({"ok": False, "error": "invalid params"}), 400
+
+    # Fetch part rows with path + qty (available) once per request.
+    rows = []
+    with closing(get_conn()) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT p.part_id, p.category_id, p.category_path_names, COALESCE(av.qty_on_hand,0) AS qty
+                  FROM public.parts p
+                  LEFT JOIN public.v_inventory_available av ON av.part_id = p.part_id
+                  WHERE p.category_path_names IS NOT NULL
+                """
+            )
+            for part_id, cat_id, path_names, qty in cur.fetchall():
+                rows.append((part_id, cat_id, path_names, int(qty or 0)))
+
+    # Aggregate child nodes at requested depth under prefix
+    from collections import defaultdict, Counter
+    node_parts = defaultdict(set)       # node_name -> set(part_id)
+    node_stock = defaultdict(int)       # node_name -> total qty
+    node_full_paths = defaultdict(list) # node_name -> list of full paths for parts in node (for final detection)
+    node_cat_ids_at_final = defaultdict(list)  # node_name -> list of category_ids where path ends exactly here
+    node_terminations = defaultdict(int)       # node_name -> count of parts whose path terminates here
+
+    plen = len(prefix)
+    for part_id, cat_id, path_names, qty in rows:
+        if not isinstance(path_names, (list, tuple)):
+            continue
+        # Ensure prefix matches path start
+        if plen and path_names[:plen] != prefix:
+            continue
+        if len(path_names) <= depth:  # no node at this depth
+            continue
+        node_name = path_names[depth]
+        node_parts[node_name].add(part_id)
+        node_stock[node_name] += qty
+        node_full_paths[node_name].append(path_names)
+        if len(path_names) == depth + 1:  # path terminates exactly at this node (category has its own list page)
+            node_cat_ids_at_final[node_name].append(cat_id)
+            node_terminations[node_name] += 1
+
+    nodes = []
+    for name in sorted(node_parts.keys()):
+        full_paths = node_full_paths[name]
+        # final if ALL paths for this node terminate here (no deeper) => every path length == depth+1
+        is_final = all(len(p) == depth + 1 for p in full_paths)
+        term_count = node_terminations.get(name, 0)
+        node_obj = {
+            "name": name,
+            "parts": len(node_parts[name]),          # distinct descendant parts
+            "stock": node_stock[name],               # total descendant stock
+            "final": is_final,                       # no deeper descendants
+            "terminates_here": term_count,           # number of parts whose path ends at this node
+        }
+        ids = node_cat_ids_at_final.get(name) or []
+        if ids:  # choose most common category id among terminating parts (even if not final)
+            cnt = Counter(ids)
+            node_obj["category_id"] = cnt.most_common(1)[0][0]
+        nodes.append(node_obj)
+
+    # Sort nodes by descending stock then parts
+    nodes.sort(key=lambda n: (-(n["stock"]), -(n["parts"]), n["name"].lower()))
+
+    resp = jsonify({"ok": True, "nodes": nodes, "depth": depth, "prefix": prefix})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+@app.get("/api/category_search")
+def api_category_search():
+    """Search full category paths for any segment containing the query substring (case-insensitive).
+
+    Query params:
+      q: search text (required, length >=1)
+
+    Returns: { ok: true, matches: [ { path: [...], parts, stock, category_id } ] }
+    """
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"ok": True, "matches": []})
+    pattern = f"%{q}%"
+    rows = []
+    with closing(get_conn()) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                WITH matched AS (
+                  SELECT p.category_path_names, p.part_id, p.category_id, COALESCE(av.qty_on_hand,0) AS qty
+                    FROM public.parts p
+                    LEFT JOIN public.v_inventory_available av ON av.part_id = p.part_id
+                   WHERE p.category_path_names IS NOT NULL
+                     AND EXISTS (
+                       SELECT 1 FROM jsonb_array_elements_text(p.category_path_names) AS seg
+                        WHERE seg ILIKE %s
+                     )
+                )
+                SELECT category_path_names, array_agg(category_id) AS category_ids,
+                       COUNT(DISTINCT part_id) AS parts, SUM(qty)::int AS stock
+                  FROM matched
+                 GROUP BY category_path_names
+                ORDER BY parts DESC, stock DESC, category_path_names::text
+                LIMIT 300
+                """,
+                (pattern,),
+            )
+            for path_names, category_ids, parts, stock in cur.fetchall():
+                rows.append((path_names, category_ids, int(parts), int(stock)))
+
+    # Build response picking a representative category_id for each terminating path (most common)
+    from collections import Counter
+    matches = []
+    for path_names, cat_ids, parts, stock in rows:
+        rep = None
+        if cat_ids:
+            cnt = Counter(cat_ids)
+            rep = cnt.most_common(1)[0][0]
+        matches.append({
+            "path": path_names,
+            "parts": parts,
+            "stock": stock,
+            "category_id": rep,
+        })
+    resp = jsonify({"ok": True, "matches": matches, "query": q, "count": len(matches)})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+@app.get("/api/catalog_tree_state")
+def api_catalog_tree_state():
+    """Return a simple version token for the catalog/dendrogram tree.
+
+    The token updates whenever parts are added/updated or inventory movements/intakes occur,
+    so the frontend can invalidate its localStorage cache reliably.
+
+    Response: { ok: true, version: <int epoch seconds>, last_change_iso: <iso> }
+    """
+    from datetime import datetime, timezone
+
+    def _get_max_ts(table: str, col: str):
+        if not _has_relation(table):
+            return None
+        with closing(get_conn()) as conn:
+            with conn.cursor() as cur:
+                cur.execute(f"SELECT MAX({col}) FROM public.{table}")
+                row = cur.fetchone()
+                return row[0] if row else None
+
+    # Gather candidates (None if table missing/empty)
+    parts_ts = _get_max_ts("parts", "updated_at")
+    moves_ts = _get_max_ts("movements", "created_at")
+    intake_ts = _get_max_ts("intakes", "created_at")
+
+    # Compute greatest timestamp; fallback to epoch if all None
+    candidates = [t for t in (parts_ts, moves_ts, intake_ts) if t is not None]
+    if candidates:
+        last_change = max(candidates)
+    else:
+        last_change = datetime.fromtimestamp(0, tz=timezone.utc)
+
+    # Some drivers may return naive timestamps; coerce to UTC
+    if last_change.tzinfo is None:
+        last_change = last_change.replace(tzinfo=timezone.utc)
+
+    version = int(last_change.timestamp())
+    resp = jsonify({
+        "ok": True,
+        "version": version,
+        "last_change_iso": last_change.isoformat(),
+    })
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 @app.get("/DBreset")
 def DBreset():
