@@ -1,7 +1,7 @@
 ## DigiKey Part Organizer
 <a href="https://www.buymeacoffee.com/ryonicle" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
-This program enables users to *scan, store, browse, and check out* DigiKey packages using a local storage system. It provides an easy way to track available parts, reuse components in future projects, and maintain a clear view of inventory. The system’s main goal is to simplify part management, minimize waste, and reduce costs.
+This program enables users to *scan, store, browse, and check out* DigiKey packages using a local storage system. It provides an easy way to track available parts, reuse components in future projects, and maintain a clear view of inventory. The system’s main goal is to simplify part management, minimize waste, and reduce costs associated with the electronics/PCB design process.
 
 # Scanning (stocking)
 
