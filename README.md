@@ -372,8 +372,11 @@ Examples
 
 
 # Updates
-## (2025-10-08)
+## (10-08-2025)
 Solved some categorization issues with duplicated or changing categories for parts whose .yaml file is not yet created. Also added `reformat.py`, a maintenance script that re-indexes all existing parts from their stored `raw_vendor_json` using the current decoder/profile logic, updating categories and attributes in-place while preserving part IDs, creation timestamps, and inventory history. Run it with `--dry-run` first to preview changes before applying them.
+## (11-24-2025)
+I created an independent program to create labels for parts that do not have a scannable code. This program is designed to work specifically with this framework (it embeds a certain code scannable by this program), and uses a Niimbot label maker. Documentation for this add-on can be found on its [GitHub Repo](https://github.com/grossrc/Component-Label-Maker)
+.
 
 
 
