@@ -1,0 +1,66 @@
+Partlist
+
+Exported from Schematic v19.sch at 10/17/2025 12:26 PM
+
+EAGLE Version 9.7.0 Copyright (c) 1988-2025 Autodesk, Inc.
+
+Assembly variant: 
+
+Part     Value              Device                   Package                Library               Sheet
+
+0.1?     CRA2512-FZ-R100ELF CRA2512-FZ-R100ELF       RESC6432X90N           CRA2512-FZ-R100ELF    1
+0.1?1    CRA2512-FZ-R100ELF CRA2512-FZ-R100ELF       RESC6432X90N           CRA2512-FZ-R100ELF    1
+0.1?2    CRA2512-FZ-R100ELF CRA2512-FZ-R100ELF       RESC6432X90N           CRA2512-FZ-R100ELF    1
+0.1?3    CRA2512-FZ-R100ELF CRA2512-FZ-R100ELF       RESC6432X90N           CRA2512-FZ-R100ELF    1
+0.1?4    CRA2512-FZ-R100ELF CRA2512-FZ-R100ELF       RESC6432X90N           CRA2512-FZ-R100ELF    1
+0.1?5    CRA2512-FZ-R100ELF CRA2512-FZ-R100ELF       RESC6432X90N           CRA2512-FZ-R100ELF    1
+47UF     WCAP-ASLI_6.3X5.5  WCAP-ASLI_6.3X5.5        WCAP-ASLI_6.3X5.5(DXL) WCAP-ASLI_6.3X5.5     1
+47UF1    WCAP-ASLI_6.3X5.5  WCAP-ASLI_6.3X5.5        WCAP-ASLI_6.3X5.5(DXL) WCAP-ASLI_6.3X5.5     1
+47UF2    WCAP-ASLI_6.3X5.5  WCAP-ASLI_6.3X5.5        WCAP-ASLI_6.3X5.5(DXL) WCAP-ASLI_6.3X5.5     1
+47UF3    WCAP-ASLI_6.3X5.5  WCAP-ASLI_6.3X5.5        WCAP-ASLI_6.3X5.5(DXL) WCAP-ASLI_6.3X5.5     1
+47UF4    WCAP-ASLI_6.3X5.5  WCAP-ASLI_6.3X5.5        WCAP-ASLI_6.3X5.5(DXL) WCAP-ASLI_6.3X5.5     1
+47UF5    WCAP-ASLI_6.3X5.5  WCAP-ASLI_6.3X5.5        WCAP-ASLI_6.3X5.5(DXL) WCAP-ASLI_6.3X5.5     1
+C1       0.1uF              C_CHIP-0402(1005-METRIC) CAPC1005X60            Tutorial - Fusion 360 1
+C2       0.1uF              C_CHIP-0402(1005-METRIC) CAPC1005X60            Tutorial - Fusion 360 1
+C3       0.1uF              C_CHIP-0402(1005-METRIC) CAPC1005X60            Tutorial - Fusion 360 1
+C4       0.1uF              C_CHIP-0402(1005-METRIC) CAPC1005X60            Tutorial - Fusion 360 1
+C5       0.1uF              C_CHIP-0402(1005-METRIC) CAPC1005X60            Tutorial - Fusion 360 1
+C6       0.1uF              C_CHIP-0402(1005-METRIC) CAPC1005X60            Tutorial - Fusion 360 1
+C7       0.1uF              C_CHIP-0402(1005-METRIC) CAPC1005X60            Tutorial - Fusion 360 1
+C8       0.1uF              C_CHIP-0402(1005-METRIC) CAPC1005X60            Tutorial - Fusion 360 1
+C9       0.1uF              C_CHIP-0402(1005-METRIC) CAPC1005X60            Tutorial - Fusion 360 1
+C10      0.1uF              C_CHIP-0402(1005-METRIC) CAPC1005X60            Tutorial - Fusion 360 1
+C11      0.1uF              C_CHIP-0402(1005-METRIC) CAPC1005X60            Tutorial - Fusion 360 1
+C12      0.1uF              C_CHIP-0402(1005-METRIC) CAPC1005X60            Tutorial - Fusion 360 1
+C13      10uF               C_CHIP-0402(1005-METRIC) CAPC1005X60            Tutorial - Fusion 360 1
+C14      0.1uF              C_CHIP-0402(1005-METRIC) CAPC1005X60            Tutorial - Fusion 360 1
+DRV1     DRV8871DDAR        DRV8871DDAR              VREG_LM5017MR/NOPB     DRV8871DDAR           1
+DRV2     DRV8871DDAR        DRV8871DDAR              VREG_LM5017MR/NOPB     DRV8871DDAR           1
+DRV3     DRV8871DDAR        DRV8871DDAR              VREG_LM5017MR/NOPB     DRV8871DDAR           1
+DRV4     DRV8871DDAR        DRV8871DDAR              VREG_LM5017MR/NOPB     DRV8871DDAR           1
+DRV5     DRV8871DDAR        DRV8871DDAR              VREG_LM5017MR/NOPB     DRV8871DDAR           1
+DRV8871  DRV8871DDAR        DRV8871DDAR              VREG_LM5017MR/NOPB     DRV8871DDAR           1
+IC1      ADS7828EB/2K5      ADS7828EB/2K5            SOP65P640X120-16N      ADS7828EB_2K5         1
+J1       PJ-002B            PJ-002B                  CUI_PJ-002B            PJ-002B               1
+R1       20k                R_CHIP-0402(1005-METRIC) RESC1005X40            Resistor              1
+R2       20k                R_CHIP-0402(1005-METRIC) RESC1005X40            Resistor              1
+R3       1.8k               R_CHIP-0402(1005-METRIC) RESC1005X40            Resistor              1
+R4       1.8k               R_CHIP-0402(1005-METRIC) RESC1005X40            Resistor              1
+R5       20k                R_CHIP-0402(1005-METRIC) RESC1005X40            Resistor              1
+R6       20k                R_CHIP-0402(1005-METRIC) RESC1005X40            Resistor              1
+R7       20k                R_CHIP-0402(1005-METRIC) RESC1005X40            Resistor              1
+R8       20k                R_CHIP-0402(1005-METRIC) RESC1005X40            Resistor              1
+R9       5ohm               R_CHIP-0402(1005-METRIC) RESC1005X40            Resistor              1
+U$1      POT_4_MOTOR        POT_4_MOTOR              POT_4M                 Library               1
+U$2      POT_4_MOTOR        POT_4_MOTOR              POT_4M                 Library               1
+U$3      POT_4_MOTOR        POT_4_MOTOR              POT_4M                 Library               1
+U$4      SURFACE_MNT_ESP32  SURFACE_MNT_ESP32        ESP_SFC_MNT            Library               1
+U$5      POT_4_MOTOR        POT_4_MOTOR              POT_4M                 Library               1
+U$6      POT_4_MOTOR        POT_4_MOTOR              POT_4M                 Library               1
+U$7      POT_4_MOTOR        POT_4_MOTOR              POT_4M                 Library               1
+U1       INA240A2DR         INA240A2DR               SOIC127P599X175-8N     INA240A2DR            1
+U2       INA240A2DR         INA240A2DR               SOIC127P599X175-8N     INA240A2DR            1
+U3       INA240A2DR         INA240A2DR               SOIC127P599X175-8N     INA240A2DR            1
+U4       INA240A2DR         INA240A2DR               SOIC127P599X175-8N     INA240A2DR            1
+U5       INA240A2DR         INA240A2DR               SOIC127P599X175-8N     INA240A2DR            1
+U6       INA240A2DR         INA240A2DR               SOIC127P599X175-8N     INA240A2DR            1
