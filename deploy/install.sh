@@ -15,6 +15,18 @@ LOG_FILE="/var/log/catalog-install.log"
 NGINX_SITE="/etc/nginx/sites-available/catalog"
 KIOSK_DESKTOP_FILE="$HOME/.config/autostart/catalog-kiosk.desktop"
 
+# URL-encode a string (for special chars in passwords)
+urlencode() {
+  local str="$1" c
+  for ((i=0; i<${#str}; i++)); do
+    c="${str:i:1}"
+    case "$c" in
+      [a-zA-Z0-9.~_-]) printf '%s' "$c" ;;
+      *) printf '%%%02X' "'$c" ;;
+    esac
+  done
+}
+
 # ===== Logging =====
 sudo mkdir -p "$(dirname "$LOG_FILE")"
 exec > >(sudo tee -a "$LOG_FILE") 2>&1
@@ -70,7 +82,8 @@ if ! sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='${DB_N
   sudo -u postgres createdb -O "$DB_USER" "$DB_NAME"
 fi
 if [ -f deploy/schema.sql ]; then
-  PSQL_URL="postgresql://${DB_USER}:${DB_PASS}@localhost:5432/${DB_NAME}"
+  # URL-encode password for schema load connection string
+  PSQL_URL="postgresql://${DB_USER}:$(urlencode "$DB_PASS")@localhost:5432/${DB_NAME}"
   psql "$PSQL_URL" -v ON_ERROR_STOP=1 -f deploy/schema.sql
 else
   echo "WARN: deploy/schema.sql not found; skipping schema load"
@@ -80,9 +93,15 @@ fi
 echo "== .env =="
 [ -f .env ] || { [ -f deploy/.env.example ] && cp deploy/.env.example .env || touch .env; }
 
-# Ensure DB_URL is present/updated
-grep -q '^DB_URL=' .env || echo "DB_URL=postgresql://${DB_USER}:${DB_PASS}@localhost:5432/${DB_NAME}" >> .env
-sed -i "s|^DB_URL=.*|DB_URL=postgresql://${DB_USER}:${DB_PASS}@localhost:5432/${DB_NAME}|" .env
+# Ensure DB_URL is present/updated (URL-encode password to handle special chars like # @ etc)
+DB_PASS_ENC="$(urlencode "$DB_PASS")"
+grep -q '^DB_URL=' .env || echo "DB_URL=postgresql://${DB_USER}:${DB_PASS_ENC}@localhost:5432/${DB_NAME}" >> .env
+sed -i "s|^DB_URL=.*|DB_URL=postgresql://${DB_USER}:${DB_PASS_ENC}@localhost:5432/${DB_NAME}|" .env
+
+# Also update individual PG* vars used by Python (db_helper.py)
+sed -i "s|^PGUSER=.*|PGUSER=${DB_USER}|" .env
+sed -i "s|^PGPASSWORD=.*|PGPASSWORD=${DB_PASS}|" .env
+sed -i "s|^PGDATABASE=.*|PGDATABASE=${DB_NAME}|" .env
 
 # Always prompt for Digi-Key creds and overwrite .env entries
 while :; do
@@ -161,7 +180,12 @@ sudo systemctl reload nginx
 # ===== 8) Kiosk =====
 echo "== Kiosk autostart =="
 sudo raspi-config nonint do_boot_behaviour B4 || true
-retry 3 2 sudo apt-get install -y chromium-browser curl
+# Try 'chromium' first (Debian Trixie+), fall back to 'chromium-browser' (older Debian/Raspbian)
+if apt-cache show chromium &>/dev/null; then
+  retry 3 2 sudo apt-get install -y chromium curl
+else
+  retry 3 2 sudo apt-get install -y chromium-browser curl
+fi
 if [ -f deploy/kiosk-start.sh ]; then
   dos2unix deploy/kiosk-start.sh || true
   sudo install -o "$USER" -g "$USER" -m 0755 deploy/kiosk-start.sh /opt/kiosk-start.sh
