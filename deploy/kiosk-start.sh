@@ -25,7 +25,7 @@ if command -v chromium-browser >/dev/null 2>&1; then
 elif command -v chromium >/dev/null 2>&1; then
   BROWSER=chromium
 else
-  log "chromium not found; install it with: sudo apt -y install chromium-browser"
+  log "chromium not found; install it with: sudo apt -y install chromium (Trixie+) or chromium-browser (older)"
   exit 1
 fi
 
