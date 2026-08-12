@@ -10,7 +10,7 @@ Every DigiKey package comes with a DataMatrix printed on the package which resem
 ![alt text](scan.gif)
 
 # Searching Inventory
-A core aspect of the program is the ability to access this inventory in a way that's useful. The Pi stores all the categorical and stock-specific information in the database.The Pi also serves as a locally hosted platform that you can access on the local network to see what's in stock. Once you have it up and running, you simply go to http://lab-parts.local/catalog to see everything currently stocked. Click 'Add to List' for every part you intend to use in your project. When you're done, you'll be able to download a text file with every local part you selected. Alternatively, you can download the list as a QR code which the system will use to checkout each part step-by-step.
+The Pi stores all the categorical and stock-specific information in the database. The Pi also serves as a locally hosted platform that you can access on the local network to see what's in stock. With the program setup, you simply go to http://lab-parts.local/catalog to see everything currently stocked. Click 'Add to List' for every part you intend to use in your project. This resembles a shopping cart on ecommerce websites- except you're shopping your local inventory. When you're done, you can download a text file with every local part you selected. Alternatively, you can download the list as a QR code which the system will use to checkout each part step-by-step.
 
 ![alt text](browse.gif)
 
