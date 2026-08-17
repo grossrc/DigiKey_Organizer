@@ -376,6 +376,8 @@ Examples
 Solved some categorization issues with duplicated or changing categories for parts whose .yaml file is not yet created. Also added `reformat.py`, a maintenance script that re-indexes all existing parts from their stored `raw_vendor_json` using the current decoder/profile logic, updating categories and attributes in-place while preserving part IDs, creation timestamps, and inventory history. Run it with `--dry-run` first to preview changes before applying them.
 ## (11-24-2025)
 I’ve created a separate companion tool for generating labels for parts that don’t have scannable codes. This tool is built specifically to integrate with this framework by embedding a compatible code format that this program can read. A Niimbot label maker is used for printing, and documentation for this add-on is available in its own [GitHub Repo](https://github.com/grossrc/Component-Label-Maker).
+## (8-17-2026)
+The 3D files for standard component wall mounting are made available in the ```/3D_Files``` folder. These can be 3D printed without supports in a solid piece and mounted to a wall with 2 large command strips. They come with 31 labelled slots (integreated into the print file) to be used as secondary numbering with a tab at the top for primary numbering. Thus the labelling scheme for each one of these mounts printed is 1-1, 1-2,..., 1-30, 1-31. Then if you print another mount, just give it the #2 primary number label to expand your inventory to 2-1, 2-2,..., 2-30, 2-31. This modular number scheme allows for essentially endless components to be stored, browsed, and easily located.
 
 
 
