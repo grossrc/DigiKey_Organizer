@@ -5,7 +5,7 @@ This program enables users to *scan, store, browse, and check out* DigiKey packa
 
 # Scanning (stocking)
 
-Every DigiKey package comes with a DataMatrix printed on the package which resembles a QR code. Embedded in this code is various information like the part_#, quantity, or lot code. The program scans this code (or you can input the part_# manually) and uses it to retrieve additional information about the part from DigiKey. You tell the program what bin/location you are storing it in, and it's input into the Database.
+Every DigiKey package comes with a DataMatrix printed on the package which resembles a QR code. Embedded in this code is various information like the part_#, quantity, or lot code. The program scans this code (or you can input the part_# manually) and retrieves additional information about the part from DigiKey. You tell the program what bin/location you are storing it in, and it's input into the Database.
 
 ![alt text](scan.gif)
 
