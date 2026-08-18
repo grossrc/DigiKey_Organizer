@@ -259,10 +259,6 @@ sudo reboot
 After rebooting, open the app from any device on your LAN (preferably desktop) at
 http://lab-parts.local/catalog
 
-The kiosk itself always opens `http://localhost/`; Chromium grants camera access only to
-that local origin. The managed policy appears in `chrome://policy` as
-`VideoCaptureAllowedUrls`. The kiosk profile is persistent, so a manual permission choice
-also survives a reboot if a Chromium build does not load the policy from either package path.
 
 ## 9. Support this project
 
@@ -396,8 +392,9 @@ I’ve created a separate companion tool for generating labels for parts that do
 The 3D files for standard component wall mounting are made available in the ```/3D_Files``` folder. These can be 3D printed without supports in a solid piece and mounted to a wall with 2 large command strips. They come with 31 labelled slots (integreated into the print file) to be used as secondary numbering with a tab at the top for primary numbering. Thus the labelling scheme for each one of these mounts printed is 1-1, 1-2,..., 1-30, 1-31. Then if you print another mount, just give it the #2 primary number label to expand your inventory to 2-1, 2-2,..., 2-30, 2-31. This modular number scheme allows for essentially endless components to be stored, browsed, and easily located.
 
 ## (8-18-2026)
-Kiosk camera permission is now configured automatically for fresh deployments. To apply it to
-an existing installation without rerunning the full application installer:
+Kiosk camera permission and touchscreen scrolling are now configured automatically for fresh
+deployments. To apply both changes to an existing installation without rerunning the full
+application installer:
 ```
 cd /opt/catalog
 git pull

@@ -37,6 +37,7 @@ log "launching $BROWSER in kiosk"
   --user-data-dir="$PROFILE_DIR" \
   --no-first-run \
   --password-store=basic \
+  --touch-events=enabled \
   --ozone-platform=wayland \
   >>"$LOG" 2>&1 \
   || "$BROWSER" \
@@ -46,4 +47,5 @@ log "launching $BROWSER in kiosk"
        --user-data-dir="$PROFILE_DIR" \
        --no-first-run \
        --password-store=basic \
+      --touch-events=enabled \
        >>"$LOG" 2>&1
