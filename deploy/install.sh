@@ -134,7 +134,7 @@ Group=www-data
 WorkingDirectory=${APP_DIR}
 EnvironmentFile=${APP_DIR}/.env
 ExecStartPre=/bin/sh -c 'for i in \$(seq 1 60); do /usr/bin/pg_isready -q -h 127.0.0.1 -p 5432 && exit 0; sleep 1; done; exit 1'
-ExecStart=${APP_DIR}/.venv/bin/gunicorn -w 2 -b 127.0.0.1:5000 app:app
+ExecStart=${APP_DIR}/.venv/bin/gunicorn -c ${APP_DIR}/gunicorn.conf.py app:app
 Environment=PYTHONUNBUFFERED=1
 StandardOutput=journal
 StandardError=journal

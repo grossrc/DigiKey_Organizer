@@ -32,6 +32,7 @@ from Scan_Part import (
 )
 import dk_decoder
 from dk_decoder import decode_product, load_registry
+from mcp_server import install_tunnel_guard, maybe_start_tunnel, mcp_bp
 
 # -------------------------------------------------------------------
 # Flask setup
@@ -51,6 +52,11 @@ REGISTRY = load_registry(
     profiles_dir=str(ROOT / "profiles"),
     traits_path=str(ROOT / "traits.yaml"),
 )
+
+# Read-only MCP endpoint for external LLMs (requires MCP_BEARER_TOKEN to be usable).
+app.register_blueprint(mcp_bp)
+# When an ngrok tunnel is open, only /mcp is answered on the public hostname.
+install_tunnel_guard(app)
 
 # -------------------------------------------------------------------
 # Helper Functions
@@ -1321,4 +1327,7 @@ def dbreset_confirm():
 if __name__ == "__main__":
     # Windows dev: http://localhost:5000
     # Raspberry Pi (kiosk): Chromium at http://localhost:5000; camera works without HTTPS in localhost context.
+    # Werkzeug's reloader forks, so only open the tunnel in the process that serves requests.
+    if os.getenv("WERKZEUG_RUN_MAIN") != "true":
+        maybe_start_tunnel(port=5000)
     app.run(host="0.0.0.0", port=5000, debug=(os.getenv("FLASK_DEBUG") == "1"))

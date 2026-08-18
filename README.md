@@ -410,6 +410,76 @@ done
 sudo reboot
 ```
 
+## (8-18-2026) LLM integration (MCP)
+The catalog now ships a read-only [MCP](https://modelcontextprotocol.io) server so an external LLM
+(Claude, ChatGPT, Copilot, ...) can answer questions about your inventory directly. It is optional
+and off by default; nothing about scanning, checkout, or the kiosk changes if you skip it.
+
+### What it exposes
+Ten tools (`list_tables`, `describe_table`, `list_categories`, `attribute_keys`,
+`distinct_attribute_values`, `search_parts`, `get_part`, `inventory_summary`, `execute_sql`,
+`explain_sql`) and six schema resources. The resources are the important part: plain column
+introspection tells a model nothing useful here, because every electrical specification lives in the
+`parts.attributes` JSONB column. So the server also publishes the canonical attribute keys and their
+units pulled straight from `profiles/*.yaml`, a live catalog of the JSON keys actually present per
+category, the category list, and a cookbook of worked SQL queries.
+
+`parts.raw_vendor_json` is never returned by default — it is tens of kilobytes per row. If a
+specification is genuinely missing from both `attributes` and `unknown_parameters`, the model can
+call `get_part` with `include_raw_vendor_json: true` on that one part to verify.
+
+### It cannot write to your database
+Four independent layers, so a jailbreak has to beat all of them:
+1. Every statement runs in a PostgreSQL `READ ONLY` transaction that is always rolled back.
+2. SQL from the model is parsed into a syntax tree; anything that is not a single `SELECT` is refused.
+3. Table allow-list, plus a block-list for filesystem/network/session functions (`pg_read_file`, `dblink`, `pg_sleep`, ...).
+4. An outer `LIMIT` and a response size cap are applied to every result.
+
+### Setup
+Add to `/opt/catalog/.env`:
+```
+# required - every client must send this as "Authorization: Bearer <token>"
+MCP_BEARER_TOKEN=<paste a long random string>
+
+# optional - leave blank to keep the MCP on your LAN only
+NGROK_AUTHTOKEN=
+NGROK_DOMAIN=
+```
+Generate a token with:
+```
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+Then `pip install -r requirements.txt` and `sudo systemctl restart catalog`.
+
+**`NGROK_AUTHTOKEN` is the on/off switch for internet access.** Leave it blank and the endpoint is
+only reachable at `http://lab-parts.local/mcp` on your own network. Put a token in it (get one free
+at https://dashboard.ngrok.com) and the app opens a tunnel at boot and prints the public URL to the
+service log (`journalctl -u catalog`). Only `/mcp` is answered over that tunnel — the catalog UI and
+the `/DBreset` routes stay on the LAN. Setting `NGROK_DOMAIN` to a reserved ngrok domain keeps the
+URL stable across reboots so you do not have to reconfigure clients.
+
+### Connecting a client
+Point any MCP client at the streamable-HTTP URL with the bearer header, e.g. for VS Code
+(`.vscode/mcp.json`) or Claude Desktop:
+```json
+{
+  "servers": {
+    "lab-parts": {
+      "type": "http",
+      "url": "http://lab-parts.local/mcp",
+      "headers": { "Authorization": "Bearer YOUR_TOKEN_HERE" }
+    }
+  }
+}
+```
+Quick check from the command line:
+```
+curl -s http://lab-parts.local/mcp \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
 
 
 [![Watch the video](https://img.youtube.com/vi/4L8dW_dunqc/hqdefault.jpg)](https://youtu.be/4L8dW_dunqc)

@@ -33,3 +33,7 @@ python-dotenv>=1.0
 #frontend stuff
 Flask>=2.3
 gunicorn
+
+#Read-only MCP server for LLM access to the parts database
+sqlglot>=25          # parses LLM-supplied SQL so it can be validated as read-only
+pyngrok>=7           # only used when NGROK_AUTHTOKEN is set in .env
