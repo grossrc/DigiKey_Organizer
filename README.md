@@ -221,7 +221,18 @@ sudo apt -y install chromium-browser curl
 sudo apt -y install dos2unix && dos2unix deploy/kiosk-start.sh
 sudo install -o "$USER" -g "$USER" -m 0755 deploy/kiosk-start.sh /opt/kiosk-start.sh
 
-# D) Create a desktop autostart entry so it runs when the desktop loads
+# D) Allow the kiosk's local web origin to use a camera without a prompt.
+# Both directories are installed because Chromium package paths vary by Pi OS release.
+for policy_dir in /etc/chromium/policies/managed /etc/chromium-browser/policies/managed; do
+  sudo install -d -m 0755 "$policy_dir"
+  sudo tee "$policy_dir/digikey-organizer-camera.json" >/dev/null <<'EOF'
+{
+  "VideoCaptureAllowedUrls": ["http://localhost/*"]
+}
+EOF
+done
+
+# E) Create a desktop autostart entry so it runs when the desktop loads
 mkdir -p ~/.config/autostart
 tee ~/.config/autostart/catalog-kiosk.desktop >/dev/null <<'EOF'
 [Desktop Entry]
@@ -232,10 +243,10 @@ X-GNOME-Autostart-enabled=true
 X-LXQt-Need-Tray=false
 EOF
 
-# E) (Once) clear any old Chromium locks from previous attempts (harmless if none)
+# F) (Once) clear any old Chromium locks from previous attempts (harmless if none)
 rm -rf ~/.config/chromium/Singleton* ~/.config/chromium/"Crash Reports" 2>/dev/null || true
 
-# F) Reboot to test
+# G) Reboot to test
 countdown=10
   while [ "$countdown" -gt 0 ]; do
     printf "\rRebooting to finalize setup in %d" "$countdown"
@@ -247,6 +258,11 @@ sudo reboot
 ```
 After rebooting, open the app from any device on your LAN (preferably desktop) at
 http://lab-parts.local/catalog
+
+The kiosk itself always opens `http://localhost/`; Chromium grants camera access only to
+that local origin. The managed policy appears in `chrome://policy` as
+`VideoCaptureAllowedUrls`. The kiosk profile is persistent, so a manual permission choice
+also survives a reboot if a Chromium build does not load the policy from either package path.
 
 ## 9. Support this project
 
@@ -378,6 +394,24 @@ Solved some categorization issues with duplicated or changing categories for par
 I’ve created a separate companion tool for generating labels for parts that don’t have scannable codes. This tool is built specifically to integrate with this framework by embedding a compatible code format that this program can read. A Niimbot label maker is used for printing, and documentation for this add-on is available in its own [GitHub Repo](https://github.com/grossrc/Component-Label-Maker).
 ## (8-17-2026)
 The 3D files for standard component wall mounting are made available in the ```/3D_Files``` folder. These can be 3D printed without supports in a solid piece and mounted to a wall with 2 large command strips. They come with 31 labelled slots (integreated into the print file) to be used as secondary numbering with a tab at the top for primary numbering. Thus the labelling scheme for each one of these mounts printed is 1-1, 1-2,..., 1-30, 1-31. Then if you print another mount, just give it the #2 primary number label to expand your inventory to 2-1, 2-2,..., 2-30, 2-31. This modular number scheme allows for essentially endless components to be stored, browsed, and easily located.
+
+## (8-18-2026)
+Kiosk camera permission is now configured automatically for fresh deployments. To apply it to
+an existing installation without rerunning the full application installer:
+```
+cd /opt/catalog
+git pull
+sudo install -o "$USER" -g "$USER" -m 0755 deploy/kiosk-start.sh /opt/kiosk-start.sh
+for policy_dir in /etc/chromium/policies/managed /etc/chromium-browser/policies/managed; do
+  sudo install -d -m 0755 "$policy_dir"
+  sudo tee "$policy_dir/digikey-organizer-camera.json" >/dev/null <<'EOF'
+{
+  "VideoCaptureAllowedUrls": ["http://localhost/*"]
+}
+EOF
+done
+sudo reboot
+```
 
 
 

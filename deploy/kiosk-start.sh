@@ -15,8 +15,8 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 
-# Use a dedicated Chromium profile so we never hit "profile in use" locks
-PROFILE_DIR="/tmp/kiosk-profile"
+# Use a dedicated, persistent Chromium profile so kiosk permissions survive reboots.
+PROFILE_DIR="${HOME}/.config/digikey-organizer-kiosk"
 mkdir -p "$PROFILE_DIR"
 
 # Find chromium binary across images

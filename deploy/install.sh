@@ -186,6 +186,18 @@ if apt-cache show chromium &>/dev/null; then
 else
   retry 3 2 sudo apt-get install -y chromium-browser curl
 fi
+# Chromium reads one of these locations depending on the Pi OS package version.
+# The policy grants video capture only to the local kiosk origin.
+for POLICY_DIR in /etc/chromium/policies/managed /etc/chromium-browser/policies/managed; do
+  sudo install -d -m 0755 "$POLICY_DIR"
+  sudo tee "$POLICY_DIR/digikey-organizer-camera.json" >/dev/null <<'EOF'
+{
+  "VideoCaptureAllowedUrls": [
+    "http://localhost/*"
+  ]
+}
+EOF
+done
 if [ -f deploy/kiosk-start.sh ]; then
   dos2unix deploy/kiosk-start.sh || true
   sudo install -o "$USER" -g "$USER" -m 0755 deploy/kiosk-start.sh /opt/kiosk-start.sh
