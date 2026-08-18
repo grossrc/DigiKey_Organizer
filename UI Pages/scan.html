@@ -11,6 +11,8 @@
     :root { --pad: 16px; }
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; background:#0b0f14; color:#fff; }
+    body { touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+    input, textarea { -webkit-user-select: text; user-select: text; }
 
     /* Camera layer */
     .stage { position: fixed; inset: 0; height: 100dvh; }
@@ -34,7 +36,7 @@
     /* INFO SHEET: now full-height (slides from bottom to TOP) */
     .sheet { position: fixed; inset: 0; background:#11161d; border-radius: 0; box-shadow: 0 -10px 40px rgba(0,0,0,.4); transform: translateY(100%); transition: transform .28s ease; z-index: 20; display:flex; flex-direction:column; }
     .sheet.open { transform: translateY(0); }
-    .sheet .content { padding: 18px; padding-bottom: calc(18px + env(safe-area-inset-bottom)); min-height: 100dvh; display:flex; flex-direction:column; overflow:auto; }
+    .sheet .content { padding: 18px; padding-bottom: calc(18px + env(safe-area-inset-bottom)); min-height: 100dvh; display:flex; flex-direction:column; overflow:auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
 
     .grid { display:grid; gap: 12px; grid-template-columns: 120px 1fr; align-items: start; }
     .grid img { width: 120px; height: 120px; object-fit: contain; background:#0b0f14; border-radius:12px; }

@@ -50,6 +50,8 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+body{touch-action:pan-y;-webkit-user-select:none;user-select:none}
+input,textarea,[contenteditable="true"]{-webkit-user-select:text;user-select:text}
 a{color:var(--brand);text-decoration:none}
 a:hover{text-decoration:underline}
 .muted{color:var(--muted)}
