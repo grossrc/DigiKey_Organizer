@@ -62,6 +62,14 @@ code, pre {
 }
 
 .copyrow { display: flex; gap: .5rem; align-items: flex-start; }
+.copyrow code, .copyrow pre { cursor: text; }
+
+code.inline {
+  border: 0;
+  padding: .05rem .3rem;
+  font-size: .8rem;
+  display: inline;
+}
 
 button {
   background: #232d3a;

@@ -28,5 +28,17 @@ os.environ["MCP_PUBLIC_PORT"] = str(public_port)
 def on_starting(server):
     from mcp_server import maybe_start_tunnel
 
+    # A -b flag on the command line overrides this file, so trust what was really bound.
+    ports = [addr[1] for addr in server.cfg.address if isinstance(addr, tuple)]
+    port = public_port
+    if public_port not in ports:
+        port = ports[0] if ports else public_port
+        os.environ["MCP_PUBLIC_PORT"] = "0"
+        server.log.error(
+            "Not listening on %s, so tunnel traffic cannot be told apart from LAN traffic by port. "
+            "Drop the -b flag from ExecStart and use '-c %s'. Tunnelling to %s instead.",
+            public_port, os.path.abspath(__file__), port,
+        )
+
     # Workers inherit MCP_TUNNEL_HOST through the environment when forked.
-    maybe_start_tunnel(port=public_port)
+    maybe_start_tunnel(port=port)

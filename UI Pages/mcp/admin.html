@@ -9,34 +9,19 @@
 <body>
 <header>
   <h1>MCP Connections</h1>
-  <p class="sub">Read-only LLM access to the parts database. This page is only reachable from the local network.</p>
+  <p class="sub">Read-only LLM access to the parts database. This page is local-network only.</p>
+  <p class="sub" id="endpoint-note"></p>
 </header>
 
 <main>
   <div id="banner" class="banner hidden"></div>
 
   <section class="card">
-    <h2>Endpoint</h2>
-    <div class="grid">
-      <div>
-        <label>Local network</label>
-        <div class="copyrow"><code id="lan-url">…</code><button class="copy" data-copy="lan-url">Copy</button></div>
-        <p class="hint">Works from any device on your LAN. No tunnel required.</p>
-      </div>
-      <div>
-        <label>Public (ngrok)</label>
-        <div class="copyrow"><code id="public-url">…</code><button class="copy" data-copy="public-url">Copy</button></div>
-        <p class="hint" id="tunnel-state"></p>
-      </div>
-    </div>
-  </section>
-
-  <section class="card">
     <h2>Access keys</h2>
     <p class="hint">
-      A key authenticates either as the last part of the URL or as a bearer token.
-      Use the URL form for ChatGPT, which cannot send custom headers. Disable a key to
-      cut off a client instantly; delete it to retire it for good.
+      Give each client its own key so you can disable just that one later. In ChatGPT, paste the URL
+      and set authentication to <strong>No authentication</strong> &mdash; the key is in the URL.
+      Clients that support headers can instead send <code class="inline">Authorization: Bearer &lt;key&gt;</code>.
     </p>
 
     <form id="new-key" class="inline">
@@ -62,11 +47,7 @@
     <label for="key-picker">Key</label>
     <select id="key-picker"></select>
 
-    <h3>ChatGPT connector</h3>
-    <p class="hint">Authentication: <strong>No authentication</strong>. The key is carried in the URL.</p>
-    <div class="copyrow"><code id="snippet-chatgpt">…</code><button class="copy" data-copy="snippet-chatgpt">Copy</button></div>
-
-    <h3>VS Code / Cursor <span class="hint">(.vscode/mcp.json)</span></h3>
+    <h3>VS Code / Claude Desktop <span class="hint">(mcp.json)</span></h3>
     <div class="copyrow"><pre id="snippet-vscode">…</pre><button class="copy" data-copy="snippet-vscode">Copy</button></div>
 
     <h3>Test from a terminal</h3>
@@ -75,14 +56,15 @@
 
   <section class="card">
     <h2>Tunnel settings</h2>
+    <p class="hint" id="tunnel-state"></p>
     <p class="hint">
-      Stored in <code>.env</code>. Changes take effect after
-      <code>sudo systemctl restart catalog</code>.
+      Stored in <code class="inline">.env</code>. Changes take effect after
+      <code class="inline">sudo systemctl restart catalog</code>.
     </p>
     <form id="settings">
       <label for="ngrok-authtoken">ngrok auth token</label>
       <input type="password" id="ngrok-authtoken" placeholder="leave blank to keep current" autocomplete="off">
-      <p class="hint">Currently: <span id="authtoken-masked">not set</span>. Empty disables the public tunnel entirely.</p>
+      <p class="hint">Currently: <span id="authtoken-masked">not set</span>. Empty disables internet access entirely.</p>
 
       <label for="ngrok-domain">ngrok domain</label>
       <input type="text" id="ngrok-domain" placeholder="your-name.ngrok-free.app" autocomplete="off">
