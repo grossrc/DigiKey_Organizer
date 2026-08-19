@@ -1,5 +1,6 @@
 .env
 EXPERIMENTAL_UPDATE_REFERENCE.md
+.mcp_tunnel_url
 
 __pycache__/Code_Scanner.cpython-313.pyc
 .gitignore

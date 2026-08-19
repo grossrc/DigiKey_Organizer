@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MCP Connections</title>
+  <link rel="stylesheet" href="/static/mcp/admin.css">
+</head>
+<body>
+<header>
+  <h1>MCP Connections</h1>
+  <p class="sub">Read-only LLM access to the parts database. This page is only reachable from the local network.</p>
+</header>
+
+<main>
+  <div id="banner" class="banner hidden"></div>
+
+  <section class="card">
+    <h2>Endpoint</h2>
+    <div class="grid">
+      <div>
+        <label>Local network</label>
+        <div class="copyrow"><code id="lan-url">…</code><button class="copy" data-copy="lan-url">Copy</button></div>
+        <p class="hint">Works from any device on your LAN. No tunnel required.</p>
+      </div>
+      <div>
+        <label>Public (ngrok)</label>
+        <div class="copyrow"><code id="public-url">…</code><button class="copy" data-copy="public-url">Copy</button></div>
+        <p class="hint" id="tunnel-state"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Access keys</h2>
+    <p class="hint">
+      A key authenticates either as the last part of the URL or as a bearer token.
+      Use the URL form for ChatGPT, which cannot send custom headers. Disable a key to
+      cut off a client instantly; delete it to retire it for good.
+    </p>
+
+    <form id="new-key" class="inline">
+      <input type="text" id="new-key-label" placeholder="Label, e.g. ChatGPT laptop" maxlength="80" required>
+      <button type="submit" class="primary">Generate key</button>
+    </form>
+
+    <div id="store-error" class="error hidden"></div>
+
+    <table id="keys">
+      <thead>
+        <tr>
+          <th>Label</th><th>Connection URL</th><th>Used</th><th>Active</th><th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p id="no-keys" class="hint hidden">No keys yet. Generate one above to connect an LLM.</p>
+  </section>
+
+  <section class="card">
+    <h2>Client setup</h2>
+    <label for="key-picker">Key</label>
+    <select id="key-picker"></select>
+
+    <h3>ChatGPT connector</h3>
+    <p class="hint">Authentication: <strong>No authentication</strong>. The key is carried in the URL.</p>
+    <div class="copyrow"><code id="snippet-chatgpt">…</code><button class="copy" data-copy="snippet-chatgpt">Copy</button></div>
+
+    <h3>VS Code / Cursor <span class="hint">(.vscode/mcp.json)</span></h3>
+    <div class="copyrow"><pre id="snippet-vscode">…</pre><button class="copy" data-copy="snippet-vscode">Copy</button></div>
+
+    <h3>Test from a terminal</h3>
+    <div class="copyrow"><pre id="snippet-curl">…</pre><button class="copy" data-copy="snippet-curl">Copy</button></div>
+  </section>
+
+  <section class="card">
+    <h2>Tunnel settings</h2>
+    <p class="hint">
+      Stored in <code>.env</code>. Changes take effect after
+      <code>sudo systemctl restart catalog</code>.
+    </p>
+    <form id="settings">
+      <label for="ngrok-authtoken">ngrok auth token</label>
+      <input type="password" id="ngrok-authtoken" placeholder="leave blank to keep current" autocomplete="off">
+      <p class="hint">Currently: <span id="authtoken-masked">not set</span>. Empty disables the public tunnel entirely.</p>
+
+      <label for="ngrok-domain">ngrok domain</label>
+      <input type="text" id="ngrok-domain" placeholder="your-name.ngrok-free.app" autocomplete="off">
+      <p class="hint">A reserved domain keeps the public URL stable across restarts. Blank means a new random URL each boot.</p>
+
+      <button type="submit" class="primary">Save settings</button>
+      <button type="button" id="disable-tunnel" class="danger">Clear token &amp; disable tunnel</button>
+    </form>
+  </section>
+</main>
+
+<script src="/static/mcp/admin.js"></script>
+</body>
+</html>

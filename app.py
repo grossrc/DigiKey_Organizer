@@ -32,7 +32,7 @@ from Scan_Part import (
 )
 import dk_decoder
 from dk_decoder import decode_product, load_registry
-from mcp_server import install_tunnel_guard, maybe_start_tunnel, mcp_bp
+from mcp_server import install_tunnel_guard, maybe_start_tunnel, mcp_admin_bp, mcp_bp
 
 # -------------------------------------------------------------------
 # Flask setup
@@ -53,9 +53,11 @@ REGISTRY = load_registry(
     traits_path=str(ROOT / "traits.yaml"),
 )
 
-# Read-only MCP endpoint for external LLMs (requires MCP_BEARER_TOKEN to be usable).
+# Read-only MCP endpoint for external LLMs (needs an access key or MCP_BEARER_TOKEN).
 app.register_blueprint(mcp_bp)
-# When an ngrok tunnel is open, only /mcp is answered on the public hostname.
+# Where access keys and tunnel settings are managed; LAN only.
+app.register_blueprint(mcp_admin_bp)
+# Requests arriving through the tunnel are answered for /mcp and nothing else.
 install_tunnel_guard(app)
 
 # -------------------------------------------------------------------

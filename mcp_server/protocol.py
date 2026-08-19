@@ -8,11 +8,12 @@ the existing nginx proxy.
 from __future__ import annotations
 
 import hmac
+import json
 import logging
 
 from flask import Blueprint, Response, current_app, jsonify, request
 
-from . import config, resources, tools
+from . import config, keys, resources, tools
 
 log = logging.getLogger(__name__)
 
@@ -55,31 +56,56 @@ def _result(req_id, result: dict):
 
 @mcp_bp.before_request
 def _authenticate():
-    token = config.bearer_token()
-    if not token:
+    legacy = config.bearer_token()
+    presented = _presented_secrets()
+
+    if legacy and any(hmac.compare_digest(candidate, legacy) for candidate in presented):
+        return None
+    if any(keys.verify(candidate) for candidate in presented):
+        return None
+
+    if not legacy and not keys.has_enabled_keys():
         return (
             jsonify({
                 "error": "MCP server is not configured.",
-                "detail": "Set MCP_BEARER_TOKEN in .env to enable this endpoint.",
+                "detail": f"Create an access key at {config.ADMIN_PATH} on the local network.",
             }),
             503,
         )
 
-    header = request.headers.get("Authorization", "")
-    scheme, _, presented = header.partition(" ")
-    if scheme.lower() != "bearer" or not hmac.compare_digest(presented.strip(), token):
-        log.warning("MCP auth failure from %s", request.remote_addr)
-        return (
-            jsonify({"error": "unauthorized"}),
-            401,
-            {"WWW-Authenticate": 'Bearer realm="mcp"'},
-        )
-    return None
+    log.warning("MCP auth failure from %s for %s", request.remote_addr, request.path)
+    return (
+        jsonify({"error": "unauthorized"}),
+        401,
+        {"WWW-Authenticate": 'Bearer realm="mcp"'},
+    )
+
+
+def _is_error_payload(text: str) -> bool:
+    try:
+        payload = json.loads(text)
+    except ValueError:
+        return False
+    return isinstance(payload, dict) and "error" in payload
+
+
+def _presented_secrets() -> list[str]:
+    """A key may arrive as the last URL segment or as a bearer token."""
+    candidates = []
+    from_path = (request.view_args or {}).get("key")
+    if from_path:
+        candidates.append(str(from_path).strip())
+
+    scheme, _, value = request.headers.get("Authorization", "").partition(" ")
+    if scheme.lower() == "bearer" and value.strip():
+        candidates.append(value.strip())
+    return candidates
 
 
 @mcp_bp.route("", methods=["GET", "DELETE"])
 @mcp_bp.route("/", methods=["GET", "DELETE"])
-def _unsupported():
+@mcp_bp.route("/<key>", methods=["GET", "DELETE"])
+def _unsupported(key=None):
     return (
         jsonify({"error": "This MCP endpoint is JSON-only; POST a JSON-RPC message."}),
         405,
@@ -89,7 +115,8 @@ def _unsupported():
 
 @mcp_bp.route("", methods=["POST"])
 @mcp_bp.route("/", methods=["POST"])
-def rpc():
+@mcp_bp.route("/<key>", methods=["POST"])
+def rpc(key=None):
     message = request.get_json(silent=True)
     if message is None:
         return _error(None, PARSE_ERROR, "Request body is not valid JSON.", http=400)
@@ -140,7 +167,11 @@ def _dispatch(method: str, params: dict, req_id):
                 "content": [{"type": "text", "text": f"{type(exc).__name__}: {exc}"}],
                 "isError": True,
             })
-        return _result(req_id, {"content": [{"type": "text", "text": text}], "isError": False})
+        return _result(req_id, {
+            "content": [{"type": "text", "text": text}],
+            # Tools report rejected input in-band, so surface that as a tool error.
+            "isError": _is_error_payload(text),
+        })
 
     if method == "resources/list":
         return _result(req_id, {"resources": resources.list_resources()})

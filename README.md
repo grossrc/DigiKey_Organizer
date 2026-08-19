@@ -436,46 +436,58 @@ Four independent layers, so a jailbreak has to beat all of them:
 4. An outer `LIMIT` and a response size cap are applied to every result.
 
 ### Setup
-Add to `/opt/catalog/.env`:
-```
-# required - every client must send this as "Authorization: Bearer <token>"
-MCP_BEARER_TOKEN=<paste a long random string>
+Everything is managed from **`http://lab-parts.local/mcp-admin`**, a page that is only reachable
+from your local network. It shows the LAN and public endpoint URLs, lets you generate, rename,
+disable and delete per-client access keys, and has copy-paste setup snippets for ChatGPT, VS Code
+and curl. Nothing here needs a login: reaching the page already means you are on the network.
 
-# optional - leave blank to keep the MCP on your LAN only
-NGROK_AUTHTOKEN=
-NGROK_DOMAIN=
-```
-Generate a token with:
-```
-python3 -c "import secrets; print(secrets.token_urlsafe(32))"
-```
-Then `pip install -r requirements.txt` and `sudo systemctl restart catalog`.
+After updating, run `pip install -r requirements.txt` and `sudo systemctl restart catalog`. The
+access-key table is created by `deploy/migrations/`, which the normal update procedure applies for
+you.
 
-**`NGROK_AUTHTOKEN` is the on/off switch for internet access.** Leave it blank and the endpoint is
-only reachable at `http://lab-parts.local/mcp` on your own network. Put a token in it (get one free
-at https://dashboard.ngrok.com) and the app opens a tunnel at boot and prints the public URL to the
-service log (`journalctl -u catalog`). Only `/mcp` is answered over that tunnel — the catalog UI and
-the `/DBreset` routes stay on the LAN. Setting `NGROK_DOMAIN` to a reserved ngrok domain keeps the
-URL stable across reboots so you do not have to reconfigure clients.
+### Access keys
+Each key is a long random string that works two ways, so it fits every client:
+- **In the URL** — `https://your-domain.ngrok-free.app/mcp/<key>`. Use this for ChatGPT, which
+  cannot send custom headers; set its authentication to *No authentication*.
+- **As a bearer token** — `Authorization: Bearer <key>` against `/mcp`. Use this for VS Code,
+  Claude Desktop and anything else that supports headers.
+
+Generate one key per client so you can tell who is using it (the page shows last-used time and a
+hit count) and disable just that one if a device is lost. Disabling takes effect immediately, with
+no restart.
+
+`MCP_BEARER_TOKEN` in `.env` still works as a fixed fallback token if you prefer managing it by
+hand. If it is blank and no keys exist, the endpoint returns 503 and stays inert.
+
+### Internet access
+**`NGROK_AUTHTOKEN` is the on/off switch.** Leave it blank and the endpoint is only reachable at
+`http://lab-parts.local/mcp` on your own network. Put a token in it (get one free at
+https://dashboard.ngrok.com — you can paste it into the admin page) and the app opens a tunnel at
+boot. Setting `NGROK_DOMAIN` to a reserved ngrok domain keeps the public URL stable across reboots
+so you do not have to reconfigure clients. Both settings live in `.env` and take effect on the next
+`sudo systemctl restart catalog`.
+
+Only `/mcp` is answered over that tunnel — the catalog UI, the admin page and the `/DBreset` routes
+are not. This is enforced by which socket the request arrived on: gunicorn listens on `127.0.0.1:5000`
+for nginx/LAN traffic and `127.0.0.1:5001` for the tunnel, so a forged `Host` header cannot get a
+public request treated as a local one.
 
 ### Connecting a client
-Point any MCP client at the streamable-HTTP URL with the bearer header, e.g. for VS Code
+Copy the ready-made snippet from `/mcp-admin`, or build it yourself — for VS Code
 (`.vscode/mcp.json`) or Claude Desktop:
 ```json
 {
   "servers": {
     "lab-parts": {
       "type": "http",
-      "url": "http://lab-parts.local/mcp",
-      "headers": { "Authorization": "Bearer YOUR_TOKEN_HERE" }
+      "url": "http://lab-parts.local/mcp/YOUR_KEY_HERE"
     }
   }
 }
 ```
 Quick check from the command line:
 ```
-curl -s http://lab-parts.local/mcp \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+curl -s http://lab-parts.local/mcp/YOUR_KEY_HERE \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```

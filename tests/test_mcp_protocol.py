@@ -4,16 +4,31 @@ import json
 import pytest
 
 TOKEN = "test-token-do-not-use-in-production"
+URL_KEY = "url-key-do-not-use-in-production"
 
 
 @pytest.fixture()
 def client(monkeypatch):
     monkeypatch.setenv("MCP_BEARER_TOKEN", TOKEN)
     from app import app
+    from mcp_server import keys
+
+    # Keep the suite independent of whatever keys exist in the developer's database.
+    monkeypatch.setattr(keys, "verify", lambda secret: None)
+    monkeypatch.setattr(keys, "has_enabled_keys", lambda: False)
 
     app.config["TESTING"] = True
     with app.test_client() as c:
         yield c
+
+
+@pytest.fixture()
+def keyed_client(client, monkeypatch):
+    from mcp_server import keys
+
+    monkeypatch.setattr(keys, "verify", lambda secret: {"key_id": 1} if secret == URL_KEY else None)
+    monkeypatch.setattr(keys, "has_enabled_keys", lambda: True)
+    return client
 
 
 def rpc(client, method, params=None, token=TOKEN, req_id=1):
@@ -30,6 +45,25 @@ def test_requires_bearer_token(client):
 def test_disabled_without_configured_token(client, monkeypatch):
     monkeypatch.setenv("MCP_BEARER_TOKEN", "")
     assert rpc(client, "ping").status_code == 503
+
+
+def test_access_key_works_in_the_url_path(keyed_client):
+    body = {"jsonrpc": "2.0", "id": 1, "method": "ping", "params": {}}
+    assert keyed_client.post(f"/mcp/{URL_KEY}", json=body).status_code == 200
+    assert keyed_client.post("/mcp/not-a-real-key", json=body).status_code == 401
+
+
+def test_access_key_also_works_as_a_bearer_token(keyed_client):
+    assert rpc(keyed_client, "ping", token=URL_KEY).status_code == 200
+
+
+def test_access_keys_are_not_readable_through_execute_sql(client):
+    resp = rpc(client, "tools/call", {
+        "name": "execute_sql",
+        "arguments": {"sql": "SELECT secret FROM mcp_access_keys"},
+    })
+    assert "mcp_access_keys" in json.dumps(resp.get_json())
+    assert resp.get_json()["result"]["isError"] is True
 
 
 def test_initialize_advertises_capabilities(client):
