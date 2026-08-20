@@ -8,6 +8,7 @@ arriving on the public port are refused before any handler runs.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from flask import Blueprint, jsonify, render_template, request
 
@@ -17,8 +18,18 @@ log = logging.getLogger(__name__)
 
 mcp_admin_bp = Blueprint("mcp_admin", __name__, url_prefix=config.ADMIN_PATH)
 
+_ASSET_DIR = Path(__file__).resolve().parent.parent / "UI Pages" / "mcp"
+
 # .env is read once per process at startup, so edits need a service restart.
 ENV_SETTINGS = {"NGROK_AUTHTOKEN", "NGROK_DOMAIN", "MCP_BEARER_TOKEN"}
+
+
+def _asset_version() -> int:
+    """Cache-busting stamp; nginx serves these files with its own cache headers."""
+    try:
+        return int(max(p.stat().st_mtime for p in _ASSET_DIR.glob("admin.*")))
+    except ValueError:
+        return 0
 
 
 @mcp_admin_bp.before_request
@@ -77,7 +88,7 @@ def _state() -> dict:
 @mcp_admin_bp.route("", methods=["GET"])
 @mcp_admin_bp.route("/", methods=["GET"])
 def page():
-    return render_template("mcp/admin.html")
+    return render_template("mcp/admin.html", asset_version=_asset_version())
 
 
 @mcp_admin_bp.route("/api/state", methods=["GET"])

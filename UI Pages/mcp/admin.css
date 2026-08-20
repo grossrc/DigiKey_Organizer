@@ -42,6 +42,24 @@ main { max-width: 1000px; margin: 0 auto; padding: 0 1.5rem; }
   margin-bottom: 1.25rem;
 }
 
+.guide { padding: 0; }
+.guide summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.guide summary::marker { color: var(--accent); }
+.guide-content { padding: 0 1.25rem 1.25rem; border-top: 1px solid var(--line); }
+.guide-content p { margin: 1rem 0; }
+.guide-content ol { margin: 1rem 0; padding-left: 1.35rem; }
+.guide-content li { margin: .45rem 0; }
+a { color: var(--accent); }
+
 .grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 
 label { display: block; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: .35rem; }

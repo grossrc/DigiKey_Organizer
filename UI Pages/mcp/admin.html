@@ -4,19 +4,71 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MCP Connections</title>
-  <link rel="stylesheet" href="/static/mcp/admin.css">
+  <link rel="stylesheet" href="/static/mcp/admin.css?v={{ asset_version }}">
 </head>
 <body>
-<header>
-  <h1>MCP Connections</h1>
-  <p class="sub">Read-only LLM access to the parts database. This page is local-network only.</p>
-  <p class="sub" id="endpoint-note"></p>
-</header>
 
 <main>
   <div id="banner" class="banner hidden"></div>
 
-  <section class="card">
+  <details class="card guide">
+    <summary>
+      <span>MCP Information and Setup</span>
+      <span class="hint">show/collapse</span>
+    </summary>
+    <div class="guide-content">
+      <p>
+        This inventory system's "MCP" allows LLMs to interface with the database and answer broad questions. Different database tools are provided to personal LLMs like ChatGPT, Claude, VScopilot, etc. which they use to interface and gather relevant data about your local stock to answer questions. The tools are read-only, so an LLM cannot change anything in your database.
+      </p>
+      <p>
+        This is valuable when designing circuits with the help of LLMs whose access to internal inventory can save time, money, and effort by sourcing from local stock rather than buying new components.
+      </p>
+
+      <h2>Example of MCP use</h2>
+      <p>
+        With the data the LLM has access to in the database (component P/N, quantity, price, datasheet, package, etc.), it's capable of answering almost anything.
+        <a href="https://chatgpt.com/share/6a86f3cd-2ad8-83ea-ab47-3ad627af020f" target="_blank" rel="noopener">This is an example ChatGPT thread</a>  I had regarding my local inventory.
+      </p>
+
+      <h2>Setting Up This Program for MCP Connection</h2>
+      <p>
+        There is one quark of setting up an MCP (put your wallet away!) which is that you have to set up a free ngrok account. This inventory system enjoys the safety of your local network which is not the case on the open internet. LLM's require access to the MCP via the open internet, so the workaround is to allow tunnel access via ngrok to this server from encrypted keys generated safely on this page (note that people on your network might also have access). In other words, you generate a unique Key here on your local network used to grant MCP access from an LLM trying to get in from the outside. If at any point a key is compromised:
+      </p>
+      <ul>
+        <li>No attacker can modify or change anything in the database</li>
+        <li>Access can be revoked on this page at any time</li>
+        <li>New keys can be generated and managed</li>
+      </ul>
+      <h3>Steps:</h3>
+      <ol>
+        <li>
+          Create a free <a href="https://ngrok.com/" target="_blank" rel="noopener">ngrok account</a>.
+          <ul>
+            <li>If prompted, select Share Localhost</li>
+          </ul>
+        </li>
+        <li>In your ngrok account:
+          <ul>
+            <li>Copy the Authtoken from your dashboard and paste it into the bottom of this page</li>
+            <li>Copy the Domain URL from your dashboard and paste it into the bottom of this page</li>
+          </ul>
+        </li>
+        <li>
+          Generate a key in the <a href="#access-keys">Access Keys</a> section below, and copy the connection URL.
+        </li>
+        <li>
+          On your preferred LLM dashboard there will be an option for MCP connection, New Plugin (ChatGPT), or something similar.
+          <ul>
+            <li>Paste the connection URL or <code class="inline">mcp.json</code> into your LLM's plugin settings.</li>
+            <li>Select "No Auth" if prompted (authorization is embedded in your link).</li>
+          </ul>
+        </li>
+        <li>Test the plugin by asking a basic question about your database.</li>
+      </ol>
+    </div>
+  </details>
+
+  <section class="card" id="access-keys">
     <h2>Access keys</h2>
     <p class="hint">
       Give each client its own key so you can disable just that one later. In ChatGPT, paste the URL
@@ -49,26 +101,23 @@
 
     <h3>VS Code / Claude Desktop <span class="hint">(mcp.json)</span></h3>
     <div class="copyrow"><pre id="snippet-vscode">…</pre><button class="copy" data-copy="snippet-vscode">Copy</button></div>
-
-    <h3>Test from a terminal</h3>
-    <div class="copyrow"><pre id="snippet-curl">…</pre><button class="copy" data-copy="snippet-curl">Copy</button></div>
   </section>
 
   <section class="card">
     <h2>Tunnel settings</h2>
     <p class="hint" id="tunnel-state"></p>
     <p class="hint">
-      Stored in <code class="inline">.env</code>. Changes take effect after
-      <code class="inline">sudo systemctl restart catalog</code>.
+      These settings configure the optional ngrok tunnel used for internet access. They are stored in
+      <code class="inline">.env</code> and take effect after <code class="inline">sudo systemctl restart catalog</code>.
     </p>
     <form id="settings">
-      <label for="ngrok-authtoken">ngrok auth token</label>
+      <label for="ngrok-authtoken">ngrok authtoken</label>
       <input type="password" id="ngrok-authtoken" placeholder="leave blank to keep current" autocomplete="off">
-      <p class="hint">Currently: <span id="authtoken-masked">not set</span>. Empty disables internet access entirely.</p>
+      <p class="hint">Connects this server to your ngrok account. Currently: <span id="authtoken-masked">not set</span>. Clearing it disables the public tunnel; local-network access remains available.</p>
 
-      <label for="ngrok-domain">ngrok domain</label>
+      <label for="ngrok-domain">Reserved ngrok domain</label>
       <input type="text" id="ngrok-domain" placeholder="your-name.ngrok-free.app" autocomplete="off">
-      <p class="hint">A reserved domain keeps the public URL stable across restarts. Blank means a new random URL each boot.</p>
+      <p class="hint">The public address assigned in your ngrok dashboard. A reserved domain keeps connection URLs stable; leaving this blank creates a new temporary address whenever the service starts.</p>
 
       <button type="submit" class="primary">Save settings</button>
       <button type="button" id="disable-tunnel" class="danger">Clear token &amp; disable tunnel</button>
@@ -76,6 +125,6 @@
   </section>
 </main>
 
-<script src="/static/mcp/admin.js"></script>
+<script src="/static/mcp/admin.js?v={{ asset_version }}"></script>
 </body>
 </html>

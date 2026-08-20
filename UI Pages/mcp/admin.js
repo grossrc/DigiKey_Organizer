@@ -139,11 +139,6 @@ function renderSnippets() {
     null,
     2
   );
-  $("snippet-curl").textContent =
-    `curl -sS -X POST ${url} \\\n` +
-    `  -H "Content-Type: application/json" \\\n` +
-    `  -H "ngrok-skip-browser-warning: 1" \\\n` +
-    `  -d '{"jsonrpc":"2.0","id":1,"method":"initialize"}'`;
 }
 
 function render() {
