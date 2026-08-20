@@ -39,10 +39,12 @@ function selectedKey() {
 function renderEndpoint() {
   const note = $("endpoint-note");
   const t = state.tunnel;
-  if (t.connected) {
-    note.textContent = `Keys connect at ${endpointUrl(state.public_base, "<key>")}`;
-  } else {
-    note.textContent = `No tunnel — keys work on this network only, at ${endpointUrl(state.lan_base, "<key>")}`;
+  if (note) {
+    if (t.connected) {
+      note.textContent = `Keys connect at ${endpointUrl(state.public_base, "<key>")}`;
+    } else {
+      note.textContent = `No tunnel — keys work on this network only, at ${endpointUrl(state.lan_base, "<key>")}`;
+    }
   }
 
   let status;
