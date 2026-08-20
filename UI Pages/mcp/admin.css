@@ -127,6 +127,7 @@ button {
   cursor: pointer;
   white-space: nowrap;
 }
+button.copy { min-width: 70px; text-align: center; }
 button:hover { border-color: var(--accent); }
 button.primary { background: var(--accent); border-color: var(--accent); color: #ffffff; font-weight: 600; }
 button.danger:hover { border-color: var(--danger); color: var(--danger); }
@@ -146,11 +147,17 @@ input, select {
 form.inline { display: flex; gap: .5rem; align-items: flex-start; margin: 1rem 0; }
 form.inline input { margin-bottom: 0; }
 
-table { width: 100%; border-collapse: collapse; margin-top: .5rem; }
+table { width: 100%; border-collapse: collapse; margin-top: .5rem; table-layout: fixed; }
 th, td { text-align: left; padding: .6rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; font-size: .85rem; }
 th { color: var(--muted); background: #eef3f9; font-weight: 500; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; }
 tbody tr:nth-child(even) td { background: #fbfdff; }
 tr.disabled td { opacity: .45; }
+
+th:nth-child(1) { width: 120px; }
+th:nth-child(2) { width: 50%; }
+th:nth-child(3) { width: 180px; }
+th:nth-child(4) { width: 70px; }
+th:nth-child(5) { width: 80px; }
 
 td.url code { font-size: .75rem; }
 
