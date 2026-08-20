@@ -32,7 +32,7 @@ h3 { margin: 1.5rem 0 .5rem; font-size: .95rem; color: var(--muted); }
 .sub, .hint { color: var(--muted); font-size: .875rem; }
 .hint { margin: .35rem 0; }
 
-main { max-width: 1000px; margin: 0 auto; padding: 0 1.5rem; }
+main { max-width: 1400px; margin: 0 auto; padding: 0 1.5rem; }
 
 .card {
   background: var(--card);
@@ -67,10 +67,21 @@ a:focus-visible {
 }
 .guide summary::marker { color: var(--accent); }
 .guide-content { padding: 0 1.25rem 1.25rem; border-top: 1px solid var(--line); }
-.guide-content p { max-width: 78ch; margin: 1rem 0; }
-.guide-content h2 { margin-top: 1.5rem; }
+.guide-content p { margin: 1rem 0; }
+.guide-content h2 {
+  margin: 2rem 0 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--line);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
 .guide-content h2:first-child { margin-top: 1.25rem; }
-.guide-content h3 { margin-top: 1.25rem; }
+.guide-content h3 {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
 .guide-content ol,
 .guide-content ul { margin: 1rem 0; padding-left: 1.5rem; }
 .guide-content li { margin: .5rem 0; padding-left: .15rem; }
@@ -128,7 +139,7 @@ input, select {
   padding: .5rem .65rem;
   font-size: .875rem;
   width: 100%;
-  max-width: 420px;
+  max-width: 600px;
   margin-bottom: .5rem;
 }
 
